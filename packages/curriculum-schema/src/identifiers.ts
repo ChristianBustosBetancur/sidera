@@ -6,7 +6,7 @@ import type {
   GroupingId,
   PlanVersionId,
   VersionCourseId,
-} from "@curriculum-universe/curriculum-domain";
+} from "@sidera/curriculum-domain";
 
 function opaqueIdSchema<Id extends string>() {
   return z.string().min(1).transform((value) => value as Id);

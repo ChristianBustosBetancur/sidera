@@ -72,7 +72,7 @@ importers:
 
   packages/curriculum-engine:
     dependencies:
-      '@curriculum-universe/curriculum-domain':
+      '@sidera/curriculum-domain':
         specifier: workspace:*
         version: link:../curriculum-domain
 
@@ -80,7 +80,7 @@ importers:
 
   packages/curriculum-schema:
     dependencies:
-      '@curriculum-universe/curriculum-domain':
+      '@sidera/curriculum-domain':
         specifier: workspace:*
         version: link:../curriculum-domain
       zod:

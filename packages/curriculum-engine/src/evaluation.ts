@@ -6,7 +6,7 @@ import type {
   RequirementExpression,
   VersionCourse,
   VersionCourseId,
-} from "@curriculum-universe/curriculum-domain";
+} from "@sidera/curriculum-domain";
 import type {
   CompositeRequirementEvaluation,
   CurriculumEvaluationContext,

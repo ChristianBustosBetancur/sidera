@@ -48,7 +48,7 @@ En `packages/curriculum-engine` únicamente:
 - Diagnósticos estructurados (`UNRESOLVED_REFERENCE`, umbral inválido, expresión vacía).
 - Pruebas Vitest en `packages/curriculum-engine/src/**/*.test.ts`.
 
-Dependencia permitida: `@curriculum-universe/curriculum-domain` (solo tipos). Ninguna dependencia externa de runtime, tampoco Zod.
+Dependencia permitida: `@sidera/curriculum-domain` (solo tipos). Ninguna dependencia externa de runtime, tampoco Zod.
 
 ## Fuera de alcance
 

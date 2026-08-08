@@ -1,4 +1,4 @@
-# ARCHITECTURE.md — Curriculum Universe
+# ARCHITECTURE.md — Sidera
 
 ## Visión general
 

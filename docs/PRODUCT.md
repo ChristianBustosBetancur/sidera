@@ -1,4 +1,4 @@
-# PRODUCT.md — Curriculum Universe
+# PRODUCT.md — Sidera
 
 ## Problema
 

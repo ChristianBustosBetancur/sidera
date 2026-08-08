@@ -1,4 +1,4 @@
-# CLAUDE.md — Instrucciones para Claude
+# CLAUDE.md — Instrucciones para Claude en Sidera
 
 Claude actúa en este repositorio como: arquitecto técnico, orquestador, UX, frontend y diseñador/revisor de tareas.
 
@@ -28,7 +28,9 @@ No leas más contexto del necesario para la tarea activa. Los documentos existen
 
 ## Restricción de entorno
 
-El único directorio autorizado para este proyecto es `D:\Dev\curriculum-universe`.
+El único directorio autorizado para este proyecto será `D:\Dev\sidera`.
+
+**Cláusula transitoria:** hasta que una persona complete el renombrado manual de la carpeta, `D:\Dev\curriculum-universe` sigue siendo una ruta autorizada, válida y equivalente para trabajar en este proyecto. Esta cláusula se eliminará en una tarea posterior al renombrado físico.
 
 No leas, listes, escribas, modifiques, elimines ni ejecutes nada fuera de ese directorio. En particular, no accedas por iniciativa propia a `C:\Users\...`, otras carpetas de `D:\`, Desktop, Documents, Downloads, otros repositorios, credenciales del sistema, ni secretos o archivos `.env` reales.
 

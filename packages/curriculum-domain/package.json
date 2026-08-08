@@ -1,5 +1,5 @@
 {
-  "name": "@curriculum-universe/curriculum-domain",
+  "name": "@sidera/curriculum-domain",
   "version": "0.0.0",
   "private": true,
   "type": "module",

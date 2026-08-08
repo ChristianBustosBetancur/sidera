@@ -6,7 +6,7 @@ import type {
   Grouping,
   PlanVersion,
   VersionCourse,
-} from "@curriculum-universe/curriculum-domain";
+} from "@sidera/curriculum-domain";
 import {
   componentIdSchema,
   courseIdSchema,

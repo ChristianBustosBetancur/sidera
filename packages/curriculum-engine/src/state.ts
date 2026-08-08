@@ -1,4 +1,4 @@
-import type { VersionCourseId } from "@curriculum-universe/curriculum-domain";
+import type { VersionCourseId } from "@sidera/curriculum-domain";
 import { evaluateVersionCourseEligibility } from "./evaluation.js";
 import type {
   CurriculumEvaluationContext,

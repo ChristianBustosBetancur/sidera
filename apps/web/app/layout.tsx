@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Curriculum Universe",
+  title: "Sidera",
   description: "Technical bootstrap placeholder",
 };
 

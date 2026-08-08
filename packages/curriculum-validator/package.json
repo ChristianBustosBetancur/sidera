@@ -1,5 +1,5 @@
 {
-  "name": "@curriculum-universe/curriculum-validator",
+  "name": "@sidera/curriculum-validator",
   "version": "0.0.0",
   "private": true,
   "type": "module",

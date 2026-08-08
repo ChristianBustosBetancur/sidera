@@ -1,5 +1,5 @@
 {
-  "name": "@curriculum-universe/database",
+  "name": "@sidera/database",
   "version": "0.0.0",
   "private": true,
   "type": "module",

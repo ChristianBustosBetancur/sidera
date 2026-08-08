@@ -54,7 +54,7 @@ Si alguna de estas decisiones resulta insuficiente para modelar algo, **pregunta
 
 - Esquemas Zod que validen estructuralmente las entidades anteriores, incluyendo la recursividad de `RequirementExpression`.
 - Tipos derivados de los esquemas, alineados con los de `curriculum-domain` (sin duplicar la definición conceptual).
-- Dependencias nuevas permitidas: `zod` en `curriculum-schema`, y la dependencia de workspace a `@curriculum-universe/curriculum-domain`.
+- Dependencias nuevas permitidas: `zod` en `curriculum-schema`, y la dependencia de workspace a `@sidera/curriculum-domain`.
 
 **Pruebas**: Vitest, colocadas junto al código (`packages/*/src/**/*.test.ts`).
 

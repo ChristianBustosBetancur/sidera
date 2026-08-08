@@ -2,7 +2,7 @@ import { z } from "zod";
 import type {
   RequirementExpression,
   RequirementLeaf,
-} from "@curriculum-universe/curriculum-domain";
+} from "@sidera/curriculum-domain";
 import {
   componentIdSchema,
   groupingIdSchema,

@@ -1,5 +1,5 @@
 {
-  "name": "@curriculum-universe/curriculum-schema",
+  "name": "@sidera/curriculum-schema",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@curriculum-universe/curriculum-domain": "workspace:*",
+    "@sidera/curriculum-domain": "workspace:*",
     "zod": "^4.3.6"
   }
 }
