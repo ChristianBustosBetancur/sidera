@@ -10,5 +10,6 @@ coverage/
 !.env.example
 pnpm-debug.log*
 .claude/settings.local.json
+.agent/
 .DS_Store
 Thumbs.db
