@@ -1,0 +1,70 @@
+import { z } from "zod";
+import type {
+  Component,
+  Course,
+  CurriculumPlan,
+  Grouping,
+  PlanVersion,
+  VersionCourse,
+} from "@curriculum-universe/curriculum-domain";
+import {
+  componentIdSchema,
+  courseIdSchema,
+  curriculumPlanIdSchema,
+  groupingIdSchema,
+  planVersionIdSchema,
+  versionCourseIdSchema,
+} from "./identifiers.js";
+import { requirementExpressionSchema } from "./requirements.js";
+
+const nameSchema = z.string().min(1);
+
+export const provenanceSchema = z.enum(["official", "proposal", "community"]);
+export const lifecycleSchema = z.enum(["draft", "published", "archived"]);
+
+export const curriculumPlanSchema: z.ZodType<CurriculumPlan> = z.strictObject({
+  id: curriculumPlanIdSchema,
+  name: nameSchema,
+});
+
+export const planVersionSchema: z.ZodType<PlanVersion> = z.strictObject({
+  id: planVersionIdSchema,
+  curriculumPlanId: curriculumPlanIdSchema,
+  name: nameSchema,
+  provenance: provenanceSchema,
+  lifecycle: lifecycleSchema,
+});
+
+export const courseSchema: z.ZodType<Course> = z.strictObject({
+  id: courseIdSchema,
+  name: nameSchema,
+});
+
+export const componentSchema: z.ZodType<Component> = z.strictObject({
+  id: componentIdSchema,
+  planVersionId: planVersionIdSchema,
+  name: nameSchema,
+});
+
+export const groupingSchema: z.ZodType<Grouping> = z.strictObject({
+  id: groupingIdSchema,
+  componentId: componentIdSchema,
+  name: nameSchema,
+});
+
+export const versionCourseSchema: z.ZodType<VersionCourse> = z.strictObject({
+  id: versionCourseIdSchema,
+  planVersionId: planVersionIdSchema,
+  courseId: courseIdSchema,
+  groupingId: groupingIdSchema,
+  academicCode: z.string().min(1),
+  credits: z.number().int().nonnegative(),
+  requirements: requirementExpressionSchema.optional(),
+});
+
+export type CurriculumPlanSchemaOutput = z.output<typeof curriculumPlanSchema>;
+export type PlanVersionSchemaOutput = z.output<typeof planVersionSchema>;
+export type CourseSchemaOutput = z.output<typeof courseSchema>;
+export type ComponentSchemaOutput = z.output<typeof componentSchema>;
+export type GroupingSchemaOutput = z.output<typeof groupingSchema>;
+export type VersionCourseSchemaOutput = z.output<typeof versionCourseSchema>;
