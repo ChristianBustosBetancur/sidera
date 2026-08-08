@@ -1,4 +1,5 @@
 export type {
+  AcademicProgram,
   Component,
   Course,
   CurriculumPlan,
@@ -6,15 +7,18 @@ export type {
   Lifecycle,
   PlanVersion,
   Provenance,
+  University,
   VersionCourse,
 } from "./entities.js";
 export type {
+  AcademicProgramId,
   ComponentId,
   CourseId,
   CurriculumPlanId,
   GroupingId,
   OpaqueId,
   PlanVersionId,
+  UniversityId,
   VersionCourseId,
 } from "./identifiers.js";
 export {

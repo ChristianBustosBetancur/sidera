@@ -4,6 +4,8 @@
 
 Monorepo con separación estricta entre interfaz, dominio y datos. La lógica curricular no depende de ningún framework de UI.
 
+La raíz conceptual institucional es `University`: de ella dependen `AcademicProgram → CurriculumPlan → PlanVersion` y el catálogo compartido de `Course`.
+
 ## Aplicaciones
 
 - `apps/web` — aplicación usada por estudiantes.

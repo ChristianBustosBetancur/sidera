@@ -1,4 +1,5 @@
 export {
+  academicProgramSchema,
   componentSchema,
   courseSchema,
   curriculumPlanSchema,
@@ -6,20 +7,25 @@ export {
   lifecycleSchema,
   planVersionSchema,
   provenanceSchema,
+  universitySchema,
   versionCourseSchema,
+  type AcademicProgramSchemaOutput,
   type ComponentSchemaOutput,
   type CourseSchemaOutput,
   type CurriculumPlanSchemaOutput,
   type GroupingSchemaOutput,
   type PlanVersionSchemaOutput,
+  type UniversitySchemaOutput,
   type VersionCourseSchemaOutput,
 } from "./entities.js";
 export {
+  academicProgramIdSchema,
   componentIdSchema,
   courseIdSchema,
   curriculumPlanIdSchema,
   groupingIdSchema,
   planVersionIdSchema,
+  universityIdSchema,
   versionCourseIdSchema,
 } from "./identifiers.js";
 export {

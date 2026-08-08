@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  academicProgramSchema,
   componentSchema,
   courseCompletedOrConcurrentRequirementSchema,
   courseCompletedRequirementSchema,
@@ -15,6 +16,7 @@ import {
   provenanceSchema,
   requirementExpressionSchema,
   requirementLeafSchema,
+  universitySchema,
   versionCourseSchema,
 } from "./index.js";
 
@@ -130,10 +132,70 @@ describe("requirement schemas", () => {
 });
 
 describe("entity schemas", () => {
-  it("validates the structural entities", () => {
-    expect(curriculumPlanSchema.safeParse({ id: "plan-a", name: "Plan ficticio" }).success).toBe(
-      true,
+  it("validates a University and rejects extra fields", () => {
+    const university = { id: "university-a", name: "Universidad ficticia" };
+
+    expect(universitySchema.safeParse(university).success).toBe(true);
+    expect(universitySchema.safeParse({ ...university, slug: "universidad-ficticia" }).success).toBe(
+      false,
     );
+  });
+
+  it("validates an AcademicProgram and requires universityId", () => {
+    expect(
+      academicProgramSchema.safeParse({
+        id: "program-a",
+        universityId: "university-a",
+        name: "Programa ficticio",
+      }).success,
+    ).toBe(true);
+    expect(
+      academicProgramSchema.safeParse({ id: "program-a", name: "Programa ficticio" }).success,
+    ).toBe(false);
+  });
+
+  it("validates a CurriculumPlan and requires academicProgramId", () => {
+    expect(
+      curriculumPlanSchema.safeParse({
+        id: "plan-a",
+        academicProgramId: "program-a",
+        name: "Plan ficticio",
+      }).success,
+    ).toBe(true);
+    expect(curriculumPlanSchema.safeParse({ id: "plan-a", name: "Plan ficticio" }).success).toBe(
+      false,
+    );
+  });
+
+  it("rejects a denormalized universityId on CurriculumPlan", () => {
+    expect(
+      curriculumPlanSchema.safeParse({
+        id: "plan-a",
+        academicProgramId: "program-a",
+        universityId: "university-a",
+        name: "Plan ficticio",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("validates a Course, requires universityId, and rejects requirements", () => {
+    const course = {
+      id: "course-a",
+      universityId: "university-a",
+      name: "Materia ficticia",
+    };
+
+    expect(courseSchema.safeParse(course).success).toBe(true);
+    expect(courseSchema.safeParse({ id: course.id, name: course.name }).success).toBe(false);
+    expect(
+      courseSchema.safeParse({
+        ...course,
+        requirements: { type: "MIN_TOTAL_CREDITS", credits: 3 },
+      }).success,
+    ).toBe(false);
+  });
+
+  it("validates the structural entities", () => {
     expect(
       planVersionSchema.safeParse({
         id: "version-a",
@@ -143,9 +205,6 @@ describe("entity schemas", () => {
         lifecycle: "draft",
       }).success,
     ).toBe(true);
-    expect(courseSchema.safeParse({ id: "course-a", name: "Materia ficticia" }).success).toBe(
-      true,
-    );
     expect(
       componentSchema.safeParse({
         id: "component-a",
@@ -153,6 +212,23 @@ describe("entity schemas", () => {
         name: "Componente ficticio",
       }).success,
     ).toBe(true);
+  });
+
+  it("rejects denormalized ancestors on PlanVersion", () => {
+    const planVersion = {
+      id: "version-a",
+      curriculumPlanId: "plan-a",
+      name: "Versión ficticia",
+      provenance: "official",
+      lifecycle: "draft",
+    };
+
+    expect(
+      planVersionSchema.safeParse({ ...planVersion, academicProgramId: "program-a" }).success,
+    ).toBe(false);
+    expect(planVersionSchema.safeParse({ ...planVersion, universityId: "university-a" }).success).toBe(
+      false,
+    );
   });
 
   it("validates the hierarchy and rejects componentId on VersionCourse", () => {
@@ -189,6 +265,22 @@ describe("entity schemas", () => {
       ...validVersionCourse,
       id: "version-course-b",
       planVersionId: "version-b",
+    });
+
+    expect(first.success).toBe(true);
+    expect(second.success).toBe(true);
+  });
+
+  it("allows a shared Course to have different requirements in different plan versions", () => {
+    const first = versionCourseSchema.safeParse({
+      ...validVersionCourse,
+      requirements: { type: "MIN_TOTAL_CREDITS", credits: 3 },
+    });
+    const second = versionCourseSchema.safeParse({
+      ...validVersionCourse,
+      id: "version-course-b",
+      planVersionId: "version-b",
+      requirements: { type: "MIN_TOTAL_CREDITS", credits: 6 },
     });
 
     expect(first.success).toBe(true);

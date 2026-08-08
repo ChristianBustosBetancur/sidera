@@ -2,6 +2,14 @@
 
 Este documento define el vocabulario conceptual del dominio. No define esquema SQL ni estructura de tablas.
 
+## Universidad
+
+Institución que agrupa programas académicos y mantiene un catálogo compartido de materias.
+
+## Programa académico
+
+Programa perteneciente a una universidad que puede tener uno o varios planes curriculares.
+
 ## Plan curricular
 
 Conjunto completo de materias, agrupaciones y reglas que conforman una carrera.
@@ -13,6 +21,10 @@ Instantánea de un plan curricular en un momento dado. Las versiones publicadas 
 ## Materia
 
 Unidad curricular cursable, con créditos, prerrequisitos y correquisitos propios.
+
+La pertenencia institucional sigue `University → Course`, mientras que la jerarquía curricular sigue `University → AcademicProgram → CurriculumPlan → PlanVersion`.
+
+`Course` es la identidad institucional compartida de una materia. `VersionCourse` representa su participación contextual en una `PlanVersion`: conserva código académico, créditos, agrupación y requisitos. Por ello, dos `VersionCourse` con el mismo `CourseId` pueden tener requisitos diferentes.
 
 ## Agrupación
 
