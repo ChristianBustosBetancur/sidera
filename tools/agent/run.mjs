@@ -163,6 +163,13 @@ function requiredReviewers() {
   return [...new Set(["claude-review", ...declared])];
 }
 
+function taskValidations() {
+  const taskFile = join(runDir, "00-task.md");
+  if (!existsSync(taskFile)) return [];
+  const match = readFileSync(taskFile, "utf8").match(/```validations\s*\r?\n([\s\S]*?)```/);
+  return match ? match[1].split(/\r?\n/).map((command) => command.trim()).filter(Boolean) : [];
+}
+
 function killTree(pid) {
   try {
     if (process.platform === "win32") execFileSync("taskkill", ["/PID", String(pid), "/T", "/F"], { stdio: "ignore" });
@@ -229,15 +236,23 @@ async function implement(attemptDir, attempt, blockers) {
 
 async function validate(attemptDir) {
   const results = [];
-  for (const step of VALIDATIONS) {
+  const validations = [
+    ...VALIDATIONS.map((step) => ({ step, source: "standard", command: "pnpm", args: [step], useShell: true })),
+    ...taskValidations().map((command) => {
+      const [program, ...args] = command.split(/\s+/);
+      return { step: command, source: "task", command: program, args, useShell: false };
+    }),
+  ];
+  for (const validation of validations) {
+    const { step, source, command, args, useShell } = validation;
     const injected = opts.injectValidateFailure === step;
     const r = injected
       ? await run(`pnpm ${step} [SYNTHETIC FAILURE]`, process.execPath, [
           "-e",
           `console.error("SYNTHETIC VALIDATION FAILURE injected for step ${step}"); process.exit(1)`,
         ])
-      : await run(`pnpm ${step}`, "pnpm", [step], { useShell: true });
-    results.push({ step, ok: r.ok, exitCode: r.code, synthetic: injected });
+      : await run(source === "standard" ? `pnpm ${step}` : step, command, args, { useShell });
+    results.push({ step, source, ok: r.ok, exitCode: r.code, synthetic: injected });
     appendFileSync(join(attemptDir, "21-validate.log"), `\n===== ${step} (exit ${r.code}) =====\n${r.out}`);
     if (!r.ok) {
       writeFileSync(join(attemptDir, "20-validate.json"), `${JSON.stringify(results, null, 2)}\n`);
@@ -483,7 +498,7 @@ async function main() {
     if (!v.ok) {
       say("BLOCKER", `validacion '${v.failedStep}' fallo — REVIEW no se ejecuta`);
       event("validate:failed", { failedStep: v.failedStep, reviewSkipped: true });
-      blockers = `# Blockers de validacion (attempt ${attempt})\n\nLa validacion \`pnpm ${v.failedStep}\` fallo.\n\n\`\`\`\n${v.output.slice(-4000)}\n\`\`\`\n`;
+      blockers = `# Blockers de validacion (attempt ${attempt})\n\nLa validacion \`${v.failedStep}\` fallo.\n\n\`\`\`\n${v.output.slice(-4000)}\n\`\`\`\n`;
       if (attempt === MAX_ATTEMPTS) stop("repair-budget-exhausted", { lastFailure: v.failedStep });
       continue;
     }
