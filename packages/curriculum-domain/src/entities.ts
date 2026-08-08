@@ -50,12 +50,14 @@ export type Component = {
   id: ComponentId;
   planVersionId: PlanVersionId;
   name: string;
+  requiredCredits: number;
 };
 
 export type Grouping = {
   id: GroupingId;
   componentId: ComponentId;
   name: string;
+  requiredCredits: number;
 };
 
 export type VersionCourse = {

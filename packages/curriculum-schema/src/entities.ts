@@ -62,12 +62,14 @@ export const componentSchema: z.ZodType<Component> = z.strictObject({
   id: componentIdSchema,
   planVersionId: planVersionIdSchema,
   name: nameSchema,
+  requiredCredits: z.number().int().positive(),
 });
 
 export const groupingSchema: z.ZodType<Grouping> = z.strictObject({
   id: groupingIdSchema,
   componentId: componentIdSchema,
   name: nameSchema,
+  requiredCredits: z.number().int().positive(),
 });
 
 export const versionCourseSchema: z.ZodType<VersionCourse> = z.strictObject({

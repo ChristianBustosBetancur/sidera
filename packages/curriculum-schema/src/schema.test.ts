@@ -39,6 +39,20 @@ const validPlanVersion = {
   requiredCredits: 120,
 };
 
+const validComponent = {
+  id: "component-a",
+  planVersionId: "version-a",
+  name: "Componente ficticio",
+  requiredCredits: 24,
+};
+
+const validGrouping = {
+  id: "grouping-a",
+  componentId: "component-a",
+  name: "Agrupación ficticia",
+  requiredCredits: 12,
+};
+
 describe("requirement schemas", () => {
   it("validates a single course prerequisite", () => {
     expect(
@@ -207,13 +221,26 @@ describe("entity schemas", () => {
 
   it("validates the structural entities", () => {
     expect(planVersionSchema.safeParse(validPlanVersion).success).toBe(true);
-    expect(
-      componentSchema.safeParse({
-        id: "component-a",
-        planVersionId: "version-a",
-        name: "Componente ficticio",
-      }).success,
-    ).toBe(true);
+    expect(componentSchema.safeParse(validComponent).success).toBe(true);
+  });
+
+  it("requires requiredCredits on Component", () => {
+    const componentWithoutRequiredCredits = {
+      id: "component-a",
+      planVersionId: "version-a",
+      name: "Componente ficticio",
+    };
+
+    expect(componentSchema.safeParse(componentWithoutRequiredCredits).success).toBe(false);
+  });
+
+  it.each([
+    ["zero", 0],
+    ["negative", -1],
+    ["decimal", 3.5],
+    ["non-numeric", "24"],
+  ])("rejects %s requiredCredits on Component", (_description, requiredCredits) => {
+    expect(componentSchema.safeParse({ ...validComponent, requiredCredits }).success).toBe(false);
   });
 
   it("requires requiredCredits on PlanVersion", () => {
@@ -249,13 +276,7 @@ describe("entity schemas", () => {
   });
 
   it("validates the hierarchy and rejects componentId on VersionCourse", () => {
-    expect(
-      groupingSchema.safeParse({
-        id: "grouping-a",
-        componentId: "component-a",
-        name: "Agrupación ficticia",
-      }).success,
-    ).toBe(true);
+    expect(groupingSchema.safeParse(validGrouping).success).toBe(true);
     expect(versionCourseSchema.safeParse(validVersionCourse).success).toBe(true);
     expect(
       versionCourseSchema.safeParse({
@@ -263,6 +284,25 @@ describe("entity schemas", () => {
         componentId: "component-a",
       }).success,
     ).toBe(false);
+  });
+
+  it("requires requiredCredits on Grouping", () => {
+    const groupingWithoutRequiredCredits = {
+      id: "grouping-a",
+      componentId: "component-a",
+      name: "Agrupación ficticia",
+    };
+
+    expect(groupingSchema.safeParse(groupingWithoutRequiredCredits).success).toBe(false);
+  });
+
+  it.each([
+    ["zero", 0],
+    ["negative", -1],
+    ["decimal", 3.5],
+    ["non-numeric", "12"],
+  ])("rejects %s requiredCredits on Grouping", (_description, requiredCredits) => {
+    expect(groupingSchema.safeParse({ ...validGrouping, requiredCredits }).success).toBe(false);
   });
 
   it("accepts mandatory and elective VersionCourse values", () => {
