@@ -37,6 +37,7 @@ export type PlanVersion = {
   name: string;
   provenance: Provenance;
   lifecycle: Lifecycle;
+  requiredCredits: number;
 };
 
 export type Course = {

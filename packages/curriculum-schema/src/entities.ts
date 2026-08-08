@@ -49,6 +49,7 @@ export const planVersionSchema: z.ZodType<PlanVersion> = z.strictObject({
   name: nameSchema,
   provenance: provenanceSchema,
   lifecycle: lifecycleSchema,
+  requiredCredits: z.number().int().positive(),
 });
 
 export const courseSchema: z.ZodType<Course> = z.strictObject({

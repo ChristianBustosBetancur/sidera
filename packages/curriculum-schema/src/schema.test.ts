@@ -29,6 +29,15 @@ const validVersionCourse = {
   credits: 3,
 };
 
+const validPlanVersion = {
+  id: "version-a",
+  curriculumPlanId: "plan-a",
+  name: "Versión ficticia",
+  provenance: "official",
+  lifecycle: "draft",
+  requiredCredits: 120,
+};
+
 describe("requirement schemas", () => {
   it("validates a single course prerequisite", () => {
     expect(
@@ -196,15 +205,7 @@ describe("entity schemas", () => {
   });
 
   it("validates the structural entities", () => {
-    expect(
-      planVersionSchema.safeParse({
-        id: "version-a",
-        curriculumPlanId: "plan-a",
-        name: "Versión ficticia",
-        provenance: "official",
-        lifecycle: "draft",
-      }).success,
-    ).toBe(true);
+    expect(planVersionSchema.safeParse(validPlanVersion).success).toBe(true);
     expect(
       componentSchema.safeParse({
         id: "component-a",
@@ -214,8 +215,8 @@ describe("entity schemas", () => {
     ).toBe(true);
   });
 
-  it("rejects denormalized ancestors on PlanVersion", () => {
-    const planVersion = {
+  it("requires requiredCredits on PlanVersion", () => {
+    const planVersionWithoutRequiredCredits = {
       id: "version-a",
       curriculumPlanId: "plan-a",
       name: "Versión ficticia",
@@ -223,12 +224,27 @@ describe("entity schemas", () => {
       lifecycle: "draft",
     };
 
-    expect(
-      planVersionSchema.safeParse({ ...planVersion, academicProgramId: "program-a" }).success,
-    ).toBe(false);
-    expect(planVersionSchema.safeParse({ ...planVersion, universityId: "university-a" }).success).toBe(
+    expect(planVersionSchema.safeParse(planVersionWithoutRequiredCredits).success).toBe(false);
+  });
+
+  it.each([
+    ["zero", 0],
+    ["negative", -1],
+    ["decimal", 3.5],
+    ["non-numeric", "120"],
+  ])("rejects %s requiredCredits on PlanVersion", (_description, requiredCredits) => {
+    expect(planVersionSchema.safeParse({ ...validPlanVersion, requiredCredits }).success).toBe(
       false,
     );
+  });
+
+  it("rejects denormalized ancestors on PlanVersion", () => {
+    expect(
+      planVersionSchema.safeParse({ ...validPlanVersion, academicProgramId: "program-a" }).success,
+    ).toBe(false);
+    expect(
+      planVersionSchema.safeParse({ ...validPlanVersion, universityId: "university-a" }).success,
+    ).toBe(false);
   });
 
   it("validates the hierarchy and rejects componentId on VersionCourse", () => {
