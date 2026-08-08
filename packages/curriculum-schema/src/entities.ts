@@ -77,6 +77,7 @@ export const versionCourseSchema: z.ZodType<VersionCourse> = z.strictObject({
   groupingId: groupingIdSchema,
   academicCode: z.string().min(1),
   credits: z.number().int().nonnegative(),
+  mandatory: z.boolean(),
   requirements: requirementExpressionSchema.optional(),
 });
 

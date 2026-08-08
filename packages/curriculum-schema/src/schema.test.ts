@@ -27,6 +27,7 @@ const validVersionCourse = {
   groupingId: "grouping-a",
   academicCode: "FIC-101",
   credits: 3,
+  mandatory: true,
 };
 
 const validPlanVersion = {
@@ -261,6 +262,29 @@ describe("entity schemas", () => {
         ...validVersionCourse,
         componentId: "component-a",
       }).success,
+    ).toBe(false);
+  });
+
+  it("accepts mandatory and elective VersionCourse values", () => {
+    expect(versionCourseSchema.safeParse(validVersionCourse).success).toBe(true);
+    expect(
+      versionCourseSchema.safeParse({ ...validVersionCourse, mandatory: false }).success,
+    ).toBe(true);
+  });
+
+  it("requires a boolean mandatory value on VersionCourse", () => {
+    const versionCourseWithoutMandatory = {
+      id: "version-course-a",
+      planVersionId: "version-a",
+      courseId: "course-a",
+      groupingId: "grouping-a",
+      academicCode: "FIC-101",
+      credits: 3,
+    };
+
+    expect(versionCourseSchema.safeParse(versionCourseWithoutMandatory).success).toBe(false);
+    expect(
+      versionCourseSchema.safeParse({ ...validVersionCourse, mandatory: "true" }).success,
     ).toBe(false);
   });
 

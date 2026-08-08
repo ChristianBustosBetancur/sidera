@@ -23,6 +23,7 @@ function versionCourse(id: VersionCourseId, credits: number): VersionCourse {
     groupingId,
     academicCode: `FIC-${id}`,
     credits,
+    mandatory: true,
   };
 }
 

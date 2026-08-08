@@ -65,5 +65,6 @@ export type VersionCourse = {
   groupingId: GroupingId;
   academicCode: string;
   credits: number;
+  mandatory: boolean;
   requirements?: RequirementExpression;
 };

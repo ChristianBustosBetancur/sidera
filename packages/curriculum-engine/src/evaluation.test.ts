@@ -42,6 +42,7 @@ function versionCourse(
     groupingId,
     academicCode: `FIC-${id}`,
     credits,
+    mandatory: true,
     requirements,
   };
 }
