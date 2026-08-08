@@ -26,6 +26,7 @@ Aprobadas por decisión humana. No se re-discuten ni se sustituyen por alternati
 5. **Campos obligatorios, no opcionales**: todo `Component` y toda `Grouping` válidos declaran `requiredCredits`. Sin valor por defecto implícito.
 6. **Validación estructural mínima**: entero positivo (`z.number().int().positive()`) en ambos, mismo patrón que `PlanVersion.requiredCredits`. Sin límite superior. Sin validación cruzada entre niveles (que la suma de `Grouping.requiredCredits` de un `Component` coincida con `Component.requiredCredits`, o que la suma de `Component.requiredCredits` de una `PlanVersion` coincida con `PlanVersion.requiredCredits`) — esa aritmética de consistencia, si se necesita, es de `curriculum-validator`, en una tarea posterior.
 7. **Sin consumidores todavía**: ningún paquete (`curriculum-engine`, `curriculum-validator`, `curriculum-snapshot`, `curriculum-importer`, `database`) ni ninguna app lee estos campos en esta tarea.
+8. **`curriculum-engine/src/evaluation.test.ts` construye fixtures completos de `Component` y `Grouping`** (dentro de `createContext()`), a diferencia de `progress.test.ts`, que usa arrays vacíos. Esos dos literales de `Component` y los dos de `Grouping` deben actualizarse para incluir `requiredCredits`, **únicamente añadiendo ese campo a los literales ya existentes** — sin cambiar ninguna aserción (`expect(...)`) ni ninguna lógica de ese archivo. No es un cambio de comportamiento, es la misma corrección mecánica que TASK-004.2 ya hizo ahí con `mandatory` en `VersionCourse`.
 
 Si alguna decisión resulta insuficiente para implementar algo, **pregunta antes de asumir**.
 
@@ -34,15 +35,17 @@ Si alguna decisión resulta insuficiente para implementar algo, **pregunta antes
 - `packages/curriculum-domain/src/entities.ts`: añadir `requiredCredits: number` a `Component` y a `Grouping`.
 - `packages/curriculum-schema/src/entities.ts`: añadir `requiredCredits: z.number().int().positive()` a `componentSchema` y a `groupingSchema`, en el mismo orden en que aparece en cada tipo.
 - `packages/curriculum-schema/src/schema.test.ts`: actualizar los fixtures de `Component` y `Grouping` ya existentes para incluir `requiredCredits`, y añadir los casos de prueba nuevos descritos abajo.
+- `packages/curriculum-engine/src/evaluation.test.ts`: **únicamente** añadir `requiredCredits` a los literales de `Component` y `Grouping` ya existentes dentro de `createContext()` (decisión 8). Ninguna otra línea de este archivo debe cambiar: ni aserciones, ni lógica, ni otros fixtures.
 
-Dependencia permitida: ninguna nueva. Ningún cambio en `curriculum-engine`, `curriculum-validator`, `curriculum-snapshot`, `curriculum-importer`, `database`, `apps/web`, `apps/admin`.
+Dependencia permitida: ninguna nueva. Ningún cambio en `curriculum-validator`, `curriculum-snapshot`, `curriculum-importer`, `database`, `apps/web`, `apps/admin`. Ningún cambio en `curriculum-engine` más allá del ajuste puntual de fixture descrito arriba — no se toca `evaluation.ts`, `state.ts`, `progress.ts`, `progress.test.ts` ni `types.ts`.
 
 ## Fuera de alcance
 
 - Cualquier consumo de estos campos: verificación de progreso por componente/agrupación, validación cruzada de sumas entre niveles, UI. Eso es una tarea posterior.
 - Campos de desglose obligatorios/optativos (decisión 2).
 - Cambios en `MIN_COMPONENT_CREDITS`, `MIN_GROUPING_CREDITS` o cualquier otro leaf de `RequirementExpression`.
-- Cambios en `curriculum-engine`, `curriculum-validator`, `curriculum-snapshot`, `curriculum-importer`, `database`, `apps/web`, `apps/admin`.
+- Cualquier cambio en `evaluation.ts`, `state.ts`, `progress.ts`, `progress.test.ts` o `types.ts` de `curriculum-engine`. En `evaluation.test.ts`, cualquier cambio que no sea añadir `requiredCredits` a los literales existentes de `Component`/`Grouping` (decisión 8) — en particular, ninguna aserción se modifica.
+- Cambios en `curriculum-validator`, `curriculum-snapshot`, `curriculum-importer`, `database`, `apps/web`, `apps/admin`.
 - El dataset real de Ciencias de la Computación (tarea posterior, formalmente TASK-004.4).
 - Refactors o renombrados no solicitados.
 - TASK-004.4 o cualquier tarea posterior.
@@ -50,9 +53,10 @@ Dependencia permitida: ninguna nueva. Ningún cambio en `curriculum-engine`, `cu
 ## Archivos permitidos
 
 ```
-packages/curriculum-domain/src/entities.ts       (Component + Grouping + requiredCredits)
-packages/curriculum-schema/src/entities.ts       (componentSchema + groupingSchema + requiredCredits)
-packages/curriculum-schema/src/schema.test.ts    (fixtures existentes + casos de prueba nuevos)
+packages/curriculum-domain/src/entities.ts           (Component + Grouping + requiredCredits)
+packages/curriculum-schema/src/entities.ts            (componentSchema + groupingSchema + requiredCredits)
+packages/curriculum-schema/src/schema.test.ts          (fixtures existentes + casos de prueba nuevos)
+packages/curriculum-engine/src/evaluation.test.ts      (solo requiredCredits en los literales de Component/Grouping ya existentes)
 ```
 
 Ningún otro archivo debe modificarse.
@@ -83,9 +87,11 @@ type Grouping = {
 
 - `Component.requiredCredits: number` y `Grouping.requiredCredits: number` existen en `curriculum-domain`.
 - `componentSchema` y `groupingSchema` exigen `requiredCredits` como entero positivo; rechazan ausente, cero, negativo, decimal y no numérico, en ambos tipos.
-- Ningún archivo fuera de los tres listados en "Archivos permitidos" queda modificado.
+- `curriculum-engine/src/evaluation.test.ts` sigue compilando y su suite completa sigue pasando, con exactamente las mismas aserciones que antes de esta tarea — el único cambio es la presencia de `requiredCredits` en sus fixtures de `Component`/`Grouping`.
+- Ningún archivo fuera de los cuatro listados en "Archivos permitidos" queda modificado.
 - No se modificó `MIN_COMPONENT_CREDITS`, `MIN_GROUPING_CREDITS` ni ningún otro leaf de `RequirementExpression`.
-- `curriculum-engine`, `curriculum-validator`, `curriculum-snapshot`, `curriculum-importer`, `database`, `apps/web`, `apps/admin` quedan sin cambios.
+- No se modificó `evaluation.ts`, `state.ts`, `progress.ts`, `progress.test.ts` ni `types.ts`.
+- `curriculum-validator`, `curriculum-snapshot`, `curriculum-importer`, `database`, `apps/web`, `apps/admin` quedan sin cambios.
 - La secuencia de validación se ejecuta sin errores.
 
 ## Casos de prueba requeridos
