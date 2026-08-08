@@ -31,6 +31,14 @@ No leas más contexto del necesario para la tarea activa.
 - No ejecutes migraciones ni acciones destructivas sobre datos sin aprobación humana explícita.
 - Ver `docs/SECURITY.md` para el resto de reglas.
 
+## Restricción de entorno
+
+El único directorio autorizado para este proyecto es `D:\Dev\curriculum-universe`.
+
+No leas, listes, escribas, modifiques, elimines ni ejecutes nada fuera de ese directorio. En particular, no accedas por iniciativa propia a `C:\Users\...`, otras carpetas de `D:\`, Desktop, Documents, Downloads, otros repositorios, credenciales del sistema, ni secretos o archivos `.env` reales.
+
+Si una tarea parece requerir acceso fuera del directorio autorizado: detente, explica la necesidad, solicita aprobación humana explícita y no continúes sin ella.
+
 ## Regla de finalización
 
 Al terminar una tarea: entrega el resumen pedido por la tarea (archivos creados/modificados, comandos ejecutados, decisiones que requieren aprobación humana) y **detente**. No inicies la siguiente tarea automáticamente.

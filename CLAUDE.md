@@ -26,6 +26,14 @@ No leas más contexto del necesario para la tarea activa. Los documentos existen
 - No tomar decisiones arquitectónicas de alto impacto silenciosamente: preséntalas para aprobación (ver principio 12 en `docs/ARCHITECTURE.md`).
 - No instalar dependencias, inicializar servicios ni ejecutar despliegues salvo instrucción explícita de la tarea activa.
 
+## Restricción de entorno
+
+El único directorio autorizado para este proyecto es `D:\Dev\curriculum-universe`.
+
+No leas, listes, escribas, modifiques, elimines ni ejecutes nada fuera de ese directorio. En particular, no accedas por iniciativa propia a `C:\Users\...`, otras carpetas de `D:\`, Desktop, Documents, Downloads, otros repositorios, credenciales del sistema, ni secretos o archivos `.env` reales.
+
+Si una tarea parece requerir acceso fuera del directorio autorizado: detente, explica la necesidad, solicita aprobación humana explícita y no continúes sin ella.
+
 ## Regla de finalización
 
 Al terminar una tarea: entrega el resumen pedido (archivos creados/modificados, decisiones tomadas, comandos ejecutados, puntos que requieren decisión humana) y **detente**. No continúes con la siguiente tarea automáticamente.
