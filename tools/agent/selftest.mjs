@@ -146,6 +146,43 @@ try {
   check("regresion staged", patch.includes("STAGED_MARKER"));
   check("el index staged permanece intacto", git(["diff", "--cached"]).includes("STAGED_MARKER"));
 
+  console.log("\n== Reviewers por defecto ==");
+  check("claude-review conserva artefacto 40", existsSync(join(attempt, "40-review-prompt.md")));
+  check("claude-review conserva artefacto 41", existsSync(join(attempt, "41-review-output.md")));
+  check("claude-review conserva artefacto 42", existsSync(join(attempt, "42-verdict.json")));
+  check(
+    "codex-qa no crea artefactos",
+    !readdirSync(attempt).some((name) => name.startsWith("50-") || name.startsWith("51-") || name.startsWith("52-")),
+  );
+  check(
+    "codex-data-audit no crea artefactos",
+    !readdirSync(attempt).some((name) => name.startsWith("60-") || name.startsWith("61-") || name.startsWith("62-")),
+  );
+
+  console.log("\n== Reviewer desconocido ==");
+  writeFileSync(join(FIXTURE, "docs", "tasks", `${TASK}.md`), `# ${TASK}\n\n\`\`\`reviewers\nreviewer-inexistente\n\`\`\`\n`);
+  const unknown = runner([TASK, "--simulated", "--review=pass", "--reset", "--implement-delay=0"]);
+  check("runner se detiene ante reviewer desconocido", unknown.status === 1, `exit ${unknown.status}`);
+  const unknownState = JSON.parse(readFileSync(STATE, "utf8"));
+  check("unknown phase = STOPPED", unknownState.phase === "STOPPED", `phase=${unknownState.phase}`);
+  check(
+    "unknown stopReason = unknown-reviewer",
+    unknownState.stopReason === "unknown-reviewer",
+    `stopReason=${unknownState.stopReason}`,
+  );
+  const unknownEvents = readFileSync(join(latestRunDir(), "events.jsonl"), "utf8")
+    .trim()
+    .split("\n")
+    .map((line) => JSON.parse(line));
+  check(
+    "evento identifica reviewer desconocido",
+    unknownEvents.some(
+      (entry) =>
+        entry.type === "stopped" && entry.reason === "unknown-reviewer" && entry.reviewer === "reviewer-inexistente",
+    ),
+  );
+  writeFileSync(join(FIXTURE, "docs", "tasks", `${TASK}.md`), `# ${TASK}\n`);
+
   console.log("\n== Untracked desaparecido entre status y diff ==");
   const missing = runner([
     TASK,
