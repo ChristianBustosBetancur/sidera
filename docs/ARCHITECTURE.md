@@ -27,6 +27,7 @@ La raíz conceptual institucional es `University`: de ella dependen `AcademicPro
 - La lógica curricular (prerrequisitos, desbloqueos, progreso) es independiente de React, Next.js y de la interfaz, y se ejecuta localmente en el dispositivo.
 - El 3D es completamente opcional y se carga solo como mejora progresiva; nunca es una dependencia del flujo funcional.
 - La misma lógica de dominio se usa desde frontend, backend, importadores y pruebas, sin duplicación.
+- Los paquetes TypeScript internos pueden exponer sus tipos desde source mediante package exports mientras el runtime sigue consumiendo artefactos compilados, cuando esto sea necesario para que el typecheck del monorepo sea reproducible desde un checkout limpio. No es una regla automática para todos los paquetes: se aplica cuando existe una dependencia de workspace real que lo requiere.
 
 ## Publicación y versionado (principios, no implementación)
 
