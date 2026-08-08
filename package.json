@@ -6,8 +6,8 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
-    "lint": "turbo run lint",
-    "typecheck": "turbo run typecheck",
+    "lint": "turbo run lint && eslint tests vitest.config.mts eslint.config.mjs",
+    "typecheck": "turbo run typecheck && tsc --project tests/tsconfig.json --noEmit",
     "test": "vitest run"
   },
   "devDependencies": {
