@@ -12,7 +12,7 @@ Esta tarea **no** crea el repositorio en GitHub, **no** configura `origin` y **n
 
 - `docs/PRODUCT.md` — qué es Sidera y para quién.
 - `docs/ARCHITECTURE.md` — estructura del monorepo (apps y paquetes).
-- `docs/SECURITY.md` — reglas sobre secretos y despliegue; el README debe apuntar aquí.
+- `docs/AGENT_SECURITY.md` — reglas sobre secretos y despliegue; el README debe apuntar aquí.
 - `AGENTS.md`, `CLAUDE.md` — reglas de alcance de agentes.
 - Este documento (las decisiones de abajo son vinculantes).
 
@@ -187,6 +187,7 @@ Justificación entrada por entrada:
 - Badges de cualquier tipo (decisión I).
 - Documentación de contribuciones externas (decisión J).
 - Dependabot, CodeQL, análisis de seguridad automático, `SECURITY.md` en la raíz (ya existe `docs/SECURITY.md` y **no se mueve**).
+  **Nota de reversión:** TASK-003.1.2 revirtió esta decisión porque no se había previsto que GitHub presentaría `docs/SECURITY.md` como una política de seguridad pública; el documento pasó a `docs/AGENT_SECURITY.md`.
 - Matriz de sistemas operativos o de versiones de Node en CI. Un solo runner, una sola versión.
 - Cualquier cambio en `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `turbo.json`, `tsconfig.json`, `vitest.config.mts` o `eslint.config.mjs`.
 - Cualquier cambio en `apps/**`, `packages/**`, `tests/**`, `docs/**` (salvo este propio archivo, que ya existe).
@@ -340,7 +341,7 @@ Secciones mínimas, en este orden:
    ```
 
    Debe indicarse que `pnpm dev` arranca ambas a la vez mediante Turborepo, y la limitación conocida de puertos descrita abajo.
-9. **Seguridad y secretos**: aviso breve de que **no deben subirse secretos ni archivos `.env` reales** al repositorio; `.env` está ignorado por git y solo se versionan archivos de ejemplo. Enlace a `docs/SECURITY.md`.
+9. **Seguridad y secretos**: aviso breve de que **no deben subirse secretos ni archivos `.env` reales** al repositorio; `.env` está ignorado por git y solo se versionan archivos de ejemplo. Enlace a `docs/AGENT_SECURITY.md`.
 10. **Licencia**: MIT, con enlace a `LICENSE`.
 
 **Prohibido en el README**: sección de contribución, badges, roadmap con fechas, instrucciones de deploy, referencias a Vercel/Supabase/Docker, y cualquier dato institucional real (nombre de universidad o de programa concreto).

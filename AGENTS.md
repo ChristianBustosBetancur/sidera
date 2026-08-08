@@ -6,7 +6,7 @@ Codex actúa en este repositorio como responsable de: backend, modelo de datos, 
 
 - `docs/ARCHITECTURE.md`
 - `docs/DOMAIN.md`
-- `docs/SECURITY.md`
+- `docs/AGENT_SECURITY.md`
 - El archivo `docs/tasks/TASK-XXX.md` de la tarea activa
 
 No leas más contexto del necesario para la tarea activa.
@@ -29,7 +29,7 @@ No leas más contexto del necesario para la tarea activa.
 - No uses credenciales de producción.
 - No guardes secretos en el repositorio.
 - No ejecutes migraciones ni acciones destructivas sobre datos sin aprobación humana explícita.
-- Ver `docs/SECURITY.md` para el resto de reglas.
+- Ver `docs/AGENT_SECURITY.md` para el resto de reglas.
 
 ## Restricción de entorno
 

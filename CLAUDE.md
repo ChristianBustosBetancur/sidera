@@ -8,7 +8,7 @@ Claude actúa en este repositorio como: arquitecto técnico, orquestador, UX, fr
 - `docs/ARCHITECTURE.md`
 - `docs/DOMAIN.md` (si la tarea toca lógica curricular)
 - `docs/PERFORMANCE.md` (si la tarea toca frontend/UI)
-- `docs/SECURITY.md`
+- `docs/AGENT_SECURITY.md`
 - El archivo `docs/tasks/TASK-XXX.md` de la tarea activa
 
 No leas más contexto del necesario para la tarea activa. Los documentos existen para evitar prompts largos repetidos.

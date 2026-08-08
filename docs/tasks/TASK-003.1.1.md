@@ -175,7 +175,7 @@ Nada más.
 - Introducir `paths`, alias de resolución o `transpilePackages`.
 - Migrar a `tsc -b` o al solution builder.
 - Corregir la emisión de `*.test.ts` dentro de `dist/` — **deuda técnica registrada, tarea independiente** (ver abajo).
-- Reorganizar `docs/SECURITY.md` o el README — **tarea independiente posterior**, ya aprobada pero no incluida aquí.
+- Reorganizar `docs/AGENT_SECURITY.md` o el README — **tarea independiente posterior**, ya aprobada pero no incluida aquí.
 - Versionar `dist/`, tocar `.gitignore`, o cualquier cambio en `apps/**`, `tests/**` o el resto de `packages/**`.
 - Commit, push, tag, release.
 
@@ -265,7 +265,7 @@ Debe ejecutarse **en este orden**, sin saltarse pasos. Todo ocurre dentro de `D:
 
 ### Nota sobre los comandos de este protocolo
 
-**Los comandos Bash que aparecen a continuación son ejemplos ilustrativos, no comandos obligatorios.** El implementador debe usar los equivalentes seguros del shell realmente disponible (PowerShell, `sh`, o las herramientas del propio agente) y respetar en todo momento `AGENTS.md` y el documento de seguridad operativa para agentes (`docs/SECURITY.md`, que una tarea posterior renombrará a `docs/AGENT_SECURITY.md`).
+**Los comandos Bash que aparecen a continuación son ejemplos ilustrativos, no comandos obligatorios.** El implementador debe usar los equivalentes seguros del shell realmente disponible (PowerShell, `sh`, o las herramientas del propio agente) y respetar en todo momento `AGENTS.md` y el documento de seguridad operativa para agentes (`docs/AGENT_SECURITY.md`, ruta adoptada posteriormente por TASK-003.1.2).
 
 En particular:
 
@@ -467,6 +467,6 @@ La tarea termina cuando **todas** estas condiciones se cumplen a la vez:
 
 **No se hace commit. No se hace push. No se abre PR.** Son pasos humanos posteriores.
 
-**No se continúa con ninguna otra tarea.** En particular, la reorganización de `docs/SECURITY.md` → `docs/AGENT_SECURITY.md` y la reescritura del README son una tarea independiente y posterior, ya aprobada pero **no** incluida aquí.
+**No se continúa con ninguna otra tarea.** En particular, la reorganización de `docs/AGENT_SECURITY.md` y la reescritura del README son una tarea independiente y posterior, ya aprobada pero **no** incluida aquí.
 
 Si cualquier paso del protocolo falla: **detenerse, restaurar el entorno de prueba (Paso 7), reportar el fallo con la salida literal, y no intentar arquitecturas alternativas sin nueva aprobación humana.**

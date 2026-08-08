@@ -1,4 +1,4 @@
-# SECURITY.md — Seguridad
+# AGENT_SECURITY.md — Seguridad operativa para agentes
 
 ## Reglas para agentes (Claude y Codex)
 
