@@ -110,11 +110,11 @@ try {
   installFixtureRepo();
   createChanges();
 
-  const result = runner([TASK, "--review=pass", "--reset", "--implement-delay=0"]);
+  const result = runner([TASK, "--simulated", "--review=pass", "--reset", "--implement-delay=0"]);
   check(
     "runner termino en HUMAN_GATE",
     result.status === 0,
-    `exit ${result.status}${result.status === 0 ? "" : `\n${result.stdout}\n${result.stderr}`}`,
+    `exit ${result.status}, signal ${result.signal ?? "none"}, error ${result.error?.message ?? "none"}${result.status === 0 ? "" : `\n${result.stdout}\n${result.stderr}`}`,
   );
   if (result.status !== 0) {
     throw new Error("el runner no produjo un snapshot");
@@ -147,7 +147,14 @@ try {
   check("el index staged permanece intacto", git(["diff", "--cached"]).includes("STAGED_MARKER"));
 
   console.log("\n== Untracked desaparecido entre status y diff ==");
-  const missing = runner([TASK, "--review=pass", "--reset", "--implement-delay=0", "--force-git-failure=untracked-missing"]);
+  const missing = runner([
+    TASK,
+    "--simulated",
+    "--review=pass",
+    "--reset",
+    "--implement-delay=0",
+    "--force-git-failure=untracked-missing",
+  ]);
   check("runner se detiene ante el archivo desaparecido", missing.status === 1, `exit ${missing.status}`);
   check("terminal reporta fallo de evidencia untracked", /GIT\s+FAIL\s+git untracked/.test(missing.stdout));
   const state = JSON.parse(readFileSync(STATE, "utf8"));
