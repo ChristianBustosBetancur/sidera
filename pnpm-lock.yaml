@@ -70,7 +70,11 @@ importers:
 
   packages/curriculum-domain: {}
 
-  packages/curriculum-engine: {}
+  packages/curriculum-engine:
+    dependencies:
+      '@curriculum-universe/curriculum-domain':
+        specifier: workspace:*
+        version: link:../curriculum-domain
 
   packages/curriculum-importer: {}
 
