@@ -9,3 +9,6 @@ coverage/
 .env.*
 !.env.example
 pnpm-debug.log*
+.claude/settings.local.json
+.DS_Store
+Thumbs.db
