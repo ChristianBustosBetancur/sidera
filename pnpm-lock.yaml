@@ -51,6 +51,15 @@ importers:
 
   apps/web:
     dependencies:
+      '@sidera/curriculum-domain':
+        specifier: workspace:*
+        version: link:../../packages/curriculum-domain
+      '@sidera/curriculum-engine':
+        specifier: workspace:*
+        version: link:../../packages/curriculum-engine
+      '@sidera/curriculum-snapshot':
+        specifier: workspace:*
+        version: link:../../packages/curriculum-snapshot
       next:
         specifier: ^16.1.6
         version: 16.3.0(@types/node@24.13.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
