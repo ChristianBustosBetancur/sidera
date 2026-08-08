@@ -123,12 +123,19 @@ try {
   const attempt = join(latestRunDir(), "attempt-1");
   const patch = readFileSync(join(attempt, "30-diff.patch"), "utf8");
   const status = readFileSync(join(attempt, "31-status.txt"), "utf8");
-  const records = status.split("\0").filter(Boolean);
+  const reviewPrompt = readFileSync(join(attempt, "40-review-prompt.md"), "utf8");
+  const records = status.split("\n").filter(Boolean);
 
-  check("status usa registros NUL-delimited", status.includes("\0"));
+  check("status no contiene bytes NUL", !status.includes("\0"));
+  check("review prompt no contiene bytes NUL de status", !reviewPrompt.includes("\0"));
+  check("status con multiples entradas produce multiples lineas", records.length > 1);
   check("untracked con espacios conserva el path", records.includes("?? untracked with spaces.txt"));
   check("untracked Unicode conserva el path", records.includes("?? untracked-café-ñ.txt"));
   check("nested path conserva el path", records.includes("?? nested/deep/untracked.txt"));
+  check(
+    "rename conserva destino y origen",
+    records.some((record) => /^R. tracked-renamed-new\.txt <- tracked-renamed-old\.txt$/.test(record)),
+  );
   check("contenido de untracked con espacios incluido", patch.includes("SPACES_MARKER"));
   check("contenido de untracked Unicode incluido", patch.includes("UNICODE_MARKER"));
   check("contenido de nested untracked incluido", patch.includes("NESTED_MARKER"));

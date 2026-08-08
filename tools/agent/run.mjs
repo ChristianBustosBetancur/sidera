@@ -120,6 +120,12 @@ function parsePorcelainZ(status) {
   return entries;
 }
 
+function formatPorcelainEntries(entries) {
+  return entries
+    .map((entry) => `${entry.code} ${entry.path}${entry.originalPath === undefined ? "" : ` <- ${entry.originalPath}`}`)
+    .join("\n");
+}
+
 function killTree(pid) {
   try {
     if (process.platform === "win32") execFileSync("taskkill", ["/PID", String(pid), "/T", "/F"], { stdio: "ignore" });
@@ -198,8 +204,9 @@ async function validate(attemptDir) {
 // que produce un parche `new file mode` estandar sin necesidad de `git add`.
 function buildReviewSnapshot() {
   const tracked = gitEvidence("diff", ["diff", "HEAD", "--find-renames"]);
-  const status = gitEvidence("status", ["status", "--porcelain=v1", "-z", "--untracked-files=all"]);
-  const entries = parsePorcelainZ(status);
+  const rawStatus = gitEvidence("status", ["status", "--porcelain=v1", "-z", "--untracked-files=all"]);
+  const entries = parsePorcelainZ(rawStatus);
+  const status = formatPorcelainEntries(entries);
   const untrackedPaths = entries.filter((entry) => entry.code === "??").map((entry) => entry.path);
 
   const parts = [
