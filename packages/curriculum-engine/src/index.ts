@@ -4,6 +4,7 @@ export {
   evaluateRequirementExpression,
   evaluateVersionCourseEligibility,
 } from "./evaluation.js";
+export { calculatePlanProgress } from "./progress.js";
 export { deriveVersionCourseState } from "./state.js";
 export type {
   CompositeRequirementEvaluation,
@@ -15,6 +16,7 @@ export type {
   EvaluationDiagnostic,
   GroupingCoursesRequirementEvaluation,
   InvalidThresholdDiagnostic,
+  PlanProgressResult,
   RequirementEvaluationNode,
   StudentTrajectory,
   UnresolvedReferenceDiagnostic,

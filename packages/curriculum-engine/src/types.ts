@@ -27,6 +27,13 @@ export type UnresolvedReferenceDiagnostic = {
   referenceId: VersionCourseId | ComponentId | GroupingId;
 };
 
+export type PlanProgressResult = {
+  completedCredits: number;
+  requiredCredits: number;
+  ratio: number;
+  diagnostics: readonly UnresolvedReferenceDiagnostic[];
+};
+
 export type InvalidThresholdDiagnostic = {
   code: "INVALID_THRESHOLD";
   threshold: number;
