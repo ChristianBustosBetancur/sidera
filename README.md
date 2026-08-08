@@ -67,6 +67,8 @@ pnpm --filter admin dev -- --port 3001
 
 ## Desarrollo
 
+Sidera utiliza un workflow supervisado para validar los cambios antes de integrarlos.
+
 Ejecuta las validaciones por separado:
 
 ```bash

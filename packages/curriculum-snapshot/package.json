@@ -9,5 +9,9 @@
     "build": "tsc -p tsconfig.json",
     "lint": "eslint src",
     "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@sidera/curriculum-domain": "workspace:*",
+    "@sidera/curriculum-schema": "workspace:*"
   }
 }

@@ -87,7 +87,14 @@ importers:
         specifier: ^4.3.6
         version: 4.4.3
 
-  packages/curriculum-snapshot: {}
+  packages/curriculum-snapshot:
+    dependencies:
+      '@sidera/curriculum-domain':
+        specifier: workspace:*
+        version: link:../curriculum-domain
+      '@sidera/curriculum-schema':
+        specifier: workspace:*
+        version: link:../curriculum-schema
 
   packages/curriculum-validator: {}
 

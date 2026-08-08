@@ -42,6 +42,7 @@ function versionCourse(
     groupingId,
     academicCode: `FIC-${id}`,
     credits,
+    mandatory: true,
     requirements,
   };
 }
@@ -52,12 +53,22 @@ function createContext(
   return {
     planVersionId,
     components: [
-      { id: componentAId, planVersionId, name: "Componente A ficticio" },
-      { id: componentBId, planVersionId, name: "Componente B ficticio" },
+      { id: componentAId, planVersionId, name: "Componente A ficticio", requiredCredits: 12 },
+      { id: componentBId, planVersionId, name: "Componente B ficticio", requiredCredits: 12 },
     ],
     groupings: [
-      { id: groupingAId, componentId: componentAId, name: "Agrupación A ficticia" },
-      { id: groupingBId, componentId: componentBId, name: "Agrupación B ficticia" },
+      {
+        id: groupingAId,
+        componentId: componentAId,
+        name: "Agrupación A ficticia",
+        requiredCredits: 6,
+      },
+      {
+        id: groupingBId,
+        componentId: componentBId,
+        name: "Agrupación B ficticia",
+        requiredCredits: 6,
+      },
     ],
     versionCourses: [
       versionCourse(targetId, groupingAId, 3, targetRequirements),

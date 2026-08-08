@@ -49,6 +49,7 @@ export const planVersionSchema: z.ZodType<PlanVersion> = z.strictObject({
   name: nameSchema,
   provenance: provenanceSchema,
   lifecycle: lifecycleSchema,
+  requiredCredits: z.number().int().positive(),
 });
 
 export const courseSchema: z.ZodType<Course> = z.strictObject({
@@ -61,12 +62,14 @@ export const componentSchema: z.ZodType<Component> = z.strictObject({
   id: componentIdSchema,
   planVersionId: planVersionIdSchema,
   name: nameSchema,
+  requiredCredits: z.number().int().positive(),
 });
 
 export const groupingSchema: z.ZodType<Grouping> = z.strictObject({
   id: groupingIdSchema,
   componentId: componentIdSchema,
   name: nameSchema,
+  requiredCredits: z.number().int().positive(),
 });
 
 export const versionCourseSchema: z.ZodType<VersionCourse> = z.strictObject({
@@ -76,6 +79,7 @@ export const versionCourseSchema: z.ZodType<VersionCourse> = z.strictObject({
   groupingId: groupingIdSchema,
   academicCode: z.string().min(1),
   credits: z.number().int().nonnegative(),
+  mandatory: z.boolean(),
   requirements: requirementExpressionSchema.optional(),
 });
 

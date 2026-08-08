@@ -37,6 +37,7 @@ export type PlanVersion = {
   name: string;
   provenance: Provenance;
   lifecycle: Lifecycle;
+  requiredCredits: number;
 };
 
 export type Course = {
@@ -49,12 +50,14 @@ export type Component = {
   id: ComponentId;
   planVersionId: PlanVersionId;
   name: string;
+  requiredCredits: number;
 };
 
 export type Grouping = {
   id: GroupingId;
   componentId: ComponentId;
   name: string;
+  requiredCredits: number;
 };
 
 export type VersionCourse = {
@@ -64,5 +67,6 @@ export type VersionCourse = {
   groupingId: GroupingId;
   academicCode: string;
   credits: number;
+  mandatory: boolean;
   requirements?: RequirementExpression;
 };

@@ -27,6 +27,30 @@ const validVersionCourse = {
   groupingId: "grouping-a",
   academicCode: "FIC-101",
   credits: 3,
+  mandatory: true,
+};
+
+const validPlanVersion = {
+  id: "version-a",
+  curriculumPlanId: "plan-a",
+  name: "Versión ficticia",
+  provenance: "official",
+  lifecycle: "draft",
+  requiredCredits: 120,
+};
+
+const validComponent = {
+  id: "component-a",
+  planVersionId: "version-a",
+  name: "Componente ficticio",
+  requiredCredits: 24,
+};
+
+const validGrouping = {
+  id: "grouping-a",
+  componentId: "component-a",
+  name: "Agrupación ficticia",
+  requiredCredits: 12,
 };
 
 describe("requirement schemas", () => {
@@ -196,26 +220,31 @@ describe("entity schemas", () => {
   });
 
   it("validates the structural entities", () => {
-    expect(
-      planVersionSchema.safeParse({
-        id: "version-a",
-        curriculumPlanId: "plan-a",
-        name: "Versión ficticia",
-        provenance: "official",
-        lifecycle: "draft",
-      }).success,
-    ).toBe(true);
-    expect(
-      componentSchema.safeParse({
-        id: "component-a",
-        planVersionId: "version-a",
-        name: "Componente ficticio",
-      }).success,
-    ).toBe(true);
+    expect(planVersionSchema.safeParse(validPlanVersion).success).toBe(true);
+    expect(componentSchema.safeParse(validComponent).success).toBe(true);
   });
 
-  it("rejects denormalized ancestors on PlanVersion", () => {
-    const planVersion = {
+  it("requires requiredCredits on Component", () => {
+    const componentWithoutRequiredCredits = {
+      id: "component-a",
+      planVersionId: "version-a",
+      name: "Componente ficticio",
+    };
+
+    expect(componentSchema.safeParse(componentWithoutRequiredCredits).success).toBe(false);
+  });
+
+  it.each([
+    ["zero", 0],
+    ["negative", -1],
+    ["decimal", 3.5],
+    ["non-numeric", "24"],
+  ])("rejects %s requiredCredits on Component", (_description, requiredCredits) => {
+    expect(componentSchema.safeParse({ ...validComponent, requiredCredits }).success).toBe(false);
+  });
+
+  it("requires requiredCredits on PlanVersion", () => {
+    const planVersionWithoutRequiredCredits = {
       id: "version-a",
       curriculumPlanId: "plan-a",
       name: "Versión ficticia",
@@ -223,28 +252,79 @@ describe("entity schemas", () => {
       lifecycle: "draft",
     };
 
-    expect(
-      planVersionSchema.safeParse({ ...planVersion, academicProgramId: "program-a" }).success,
-    ).toBe(false);
-    expect(planVersionSchema.safeParse({ ...planVersion, universityId: "university-a" }).success).toBe(
+    expect(planVersionSchema.safeParse(planVersionWithoutRequiredCredits).success).toBe(false);
+  });
+
+  it.each([
+    ["zero", 0],
+    ["negative", -1],
+    ["decimal", 3.5],
+    ["non-numeric", "120"],
+  ])("rejects %s requiredCredits on PlanVersion", (_description, requiredCredits) => {
+    expect(planVersionSchema.safeParse({ ...validPlanVersion, requiredCredits }).success).toBe(
       false,
     );
   });
 
-  it("validates the hierarchy and rejects componentId on VersionCourse", () => {
+  it("rejects denormalized ancestors on PlanVersion", () => {
     expect(
-      groupingSchema.safeParse({
-        id: "grouping-a",
-        componentId: "component-a",
-        name: "Agrupación ficticia",
-      }).success,
-    ).toBe(true);
+      planVersionSchema.safeParse({ ...validPlanVersion, academicProgramId: "program-a" }).success,
+    ).toBe(false);
+    expect(
+      planVersionSchema.safeParse({ ...validPlanVersion, universityId: "university-a" }).success,
+    ).toBe(false);
+  });
+
+  it("validates the hierarchy and rejects componentId on VersionCourse", () => {
+    expect(groupingSchema.safeParse(validGrouping).success).toBe(true);
     expect(versionCourseSchema.safeParse(validVersionCourse).success).toBe(true);
     expect(
       versionCourseSchema.safeParse({
         ...validVersionCourse,
         componentId: "component-a",
       }).success,
+    ).toBe(false);
+  });
+
+  it("requires requiredCredits on Grouping", () => {
+    const groupingWithoutRequiredCredits = {
+      id: "grouping-a",
+      componentId: "component-a",
+      name: "Agrupación ficticia",
+    };
+
+    expect(groupingSchema.safeParse(groupingWithoutRequiredCredits).success).toBe(false);
+  });
+
+  it.each([
+    ["zero", 0],
+    ["negative", -1],
+    ["decimal", 3.5],
+    ["non-numeric", "12"],
+  ])("rejects %s requiredCredits on Grouping", (_description, requiredCredits) => {
+    expect(groupingSchema.safeParse({ ...validGrouping, requiredCredits }).success).toBe(false);
+  });
+
+  it("accepts mandatory and elective VersionCourse values", () => {
+    expect(versionCourseSchema.safeParse(validVersionCourse).success).toBe(true);
+    expect(
+      versionCourseSchema.safeParse({ ...validVersionCourse, mandatory: false }).success,
+    ).toBe(true);
+  });
+
+  it("requires a boolean mandatory value on VersionCourse", () => {
+    const versionCourseWithoutMandatory = {
+      id: "version-course-a",
+      planVersionId: "version-a",
+      courseId: "course-a",
+      groupingId: "grouping-a",
+      academicCode: "FIC-101",
+      credits: 3,
+    };
+
+    expect(versionCourseSchema.safeParse(versionCourseWithoutMandatory).success).toBe(false);
+    expect(
+      versionCourseSchema.safeParse({ ...validVersionCourse, mandatory: "true" }).success,
     ).toBe(false);
   });
 
