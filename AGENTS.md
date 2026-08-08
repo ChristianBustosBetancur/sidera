@@ -35,8 +35,6 @@ No leas más contexto del necesario para la tarea activa.
 
 El único directorio autorizado para este proyecto será `D:\Dev\sidera`.
 
-**Cláusula transitoria:** hasta que una persona complete el renombrado manual de la carpeta, `D:\Dev\curriculum-universe` sigue siendo una ruta autorizada, válida y equivalente para trabajar en este proyecto. Esta cláusula se eliminará en una tarea posterior al renombrado físico.
-
 No leas, listes, escribas, modifiques, elimines ni ejecutes nada fuera de ese directorio. En particular, no accedas por iniciativa propia a `C:\Users\...`, otras carpetas de `D:\`, Desktop, Documents, Downloads, otros repositorios, credenciales del sistema, ni secretos o archivos `.env` reales.
 
 Si una tarea parece requerir acceso fuera del directorio autorizado: detente, explica la necesidad, solicita aprobación humana explícita y no continúes sin ella.
