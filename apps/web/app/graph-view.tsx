@@ -4,14 +4,13 @@ import type {
   VersionCourse,
   VersionCourseId,
 } from "@sidera/curriculum-domain";
-import {
-  type DerivedCourseState,
-} from "@sidera/curriculum-engine";
+import { type DerivedCourseState } from "@sidera/curriculum-engine";
 import { unalCs2024Official } from "@sidera/curriculum-snapshot";
 import Link from "next/link";
 import {
   type PointerEvent as ReactPointerEvent,
   useCallback,
+  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -59,7 +58,6 @@ function GraphCourseCard({
   dimmed,
   setNodeRef,
   onSelect,
-  onMark,
 }: {
   versionCourse: VersionCourse;
   state: DerivedCourseState;
@@ -67,14 +65,8 @@ function GraphCourseCard({
   dimmed: boolean;
   setNodeRef: (element: HTMLElement | null) => void;
   onSelect: () => void;
-  onMark: (mark: Mark) => void;
 }) {
   const course = coursesById.get(versionCourse.courseId);
-  const requirements = versionCourse.requirements
-    ? requirementLines(versionCourse.requirements)
-    : [];
-  const currentMark: Mark =
-    state === "COMPLETED" || state === "IN_PROGRESS" ? state : "UNMARKED";
 
   return (
     <article
@@ -102,35 +94,6 @@ function GraphCourseCard({
           {stateLabels[state]}
         </span>
       </div>
-      {requirements.length > 0 ? (
-        <ul className={styles.requirements}>
-          {requirements.map((line, index) => (
-            <li key={`${line}-${index}`}>{line}</li>
-          ))}
-        </ul>
-      ) : null}
-      <div
-        className={styles.actions}
-        role="group"
-        aria-label={`Trayectoria para ${course?.name ?? versionCourse.academicCode}`}
-        onClick={(event) => event.stopPropagation()}
-      >
-        {(["UNMARKED", "IN_PROGRESS", "COMPLETED"] as const).map((mark) => (
-          <button
-            key={mark}
-            type="button"
-            aria-pressed={currentMark === mark}
-            disabled={state === "BLOCKED" && mark !== "UNMARKED"}
-            onClick={() => onMark(mark)}
-          >
-            {mark === "UNMARKED"
-              ? "Sin marcar"
-              : mark === "IN_PROGRESS"
-                ? "En curso"
-                : "Completada"}
-          </button>
-        ))}
-      </div>
     </article>
   );
 }
@@ -141,6 +104,7 @@ export function GraphView() {
   const [edgePositions, setEdgePositions] = useState<EdgePosition[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const graphRegionRef = useRef<HTMLElement>(null);
+  const detailPanelRef = useRef<HTMLElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const nodeRefs = useRef(new Map<VersionCourseId, HTMLElement>());
   const dragStateRef = useRef<DragState | null>(null);
@@ -164,6 +128,27 @@ export function GraphView() {
       if (edge.targetId === selectedId) ids.add(edge.sourceId);
     }
     return ids;
+  }, [selectedId]);
+
+  const selectedVersionCourse = selectedId
+    ? versionCoursesById.get(selectedId)
+    : undefined;
+  const selectedCourse = selectedVersionCourse
+    ? coursesById.get(selectedVersionCourse.courseId)
+    : undefined;
+  const selectedState = selectedId
+    ? (states.get(selectedId) ?? "BLOCKED")
+    : undefined;
+  const selectedMark: Mark =
+    selectedState === "COMPLETED" || selectedState === "IN_PROGRESS"
+      ? selectedState
+      : "UNMARKED";
+  const selectedRequirements = selectedVersionCourse?.requirements
+    ? requirementLines(selectedVersionCourse.requirements)
+    : [];
+
+  useEffect(() => {
+    if (selectedId) detailPanelRef.current?.focus();
   }, [selectedId]);
 
   const measureEdges = useCallback(() => {
@@ -326,73 +311,172 @@ export function GraphView() {
         </section>
       ) : null}
 
-      <section
-        ref={graphRegionRef}
-        className={`${styles.graphRegion} ${isDragging ? styles.dragging : ""}`}
-        aria-label="Grafo curricular"
-        tabIndex={0}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={(event) => finishDrag(event, true)}
-        onPointerCancel={(event) => finishDrag(event, false)}
-        onClickCapture={(event) => {
-          if (!suppressNextClickRef.current) return;
-          suppressNextClickRef.current = false;
-          event.preventDefault();
-          event.stopPropagation();
-        }}
-      >
-        <div className={styles.canvas} ref={canvasRef}>
-          <svg className={styles.edges} aria-hidden="true">
-            {edgePositions.map((edge, index) => {
-              const focused =
-                selectedId === edge.sourceId || selectedId === edge.targetId;
-              const middle = (edge.start.x + edge.end.x) / 2;
-              return (
-                <path
-                  key={`${edge.sourceId}-${edge.targetId}-${edge.type}-${index}`}
-                  d={`M ${edge.start.x} ${edge.start.y} C ${middle} ${edge.start.y}, ${middle} ${edge.end.y}, ${edge.end.x} ${edge.end.y}`}
-                  className={`${edge.type === "COREQUISITE" ? styles.corequisiteEdge : styles.prerequisiteEdge} ${selectedId && !focused ? styles.edgeDimmed : ""} ${focused ? styles.edgeFocused : ""}`}
-                />
-              );
-            })}
-          </svg>
+      <div className={styles.graphWorkspace}>
+        <section
+          ref={graphRegionRef}
+          className={`${styles.graphRegion} ${isDragging ? styles.dragging : ""}`}
+          aria-label="Grafo curricular"
+          tabIndex={0}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={(event) => finishDrag(event, true)}
+          onPointerCancel={(event) => finishDrag(event, false)}
+          onClickCapture={(event) => {
+            if (!suppressNextClickRef.current) return;
+            suppressNextClickRef.current = false;
+            event.preventDefault();
+            event.stopPropagation();
+          }}
+        >
+          <div className={styles.canvas} ref={canvasRef}>
+            <svg className={styles.edges} aria-hidden="true">
+              {edgePositions.map((edge, index) => {
+                const focused =
+                  selectedId === edge.sourceId || selectedId === edge.targetId;
+                const middle = (edge.start.x + edge.end.x) / 2;
+                return (
+                  <path
+                    key={`${edge.sourceId}-${edge.targetId}-${edge.type}-${index}`}
+                    d={`M ${edge.start.x} ${edge.start.y} C ${middle} ${edge.start.y}, ${middle} ${edge.end.y}, ${edge.end.x} ${edge.end.y}`}
+                    className={`${edge.type === "COREQUISITE" ? styles.corequisiteEdge : styles.prerequisiteEdge} ${selectedId && !focused ? styles.edgeDimmed : ""} ${focused ? styles.edgeFocused : ""}`}
+                  />
+                );
+              })}
+            </svg>
 
-          <div className={styles.columns}>
-            {coursesByGraphLevel.map(([level, versionCourses]) => (
-              <section
-                className={styles.levelColumn}
-                key={level}
-                aria-labelledby={`graph-level-${level}`}
-              >
-                <h2 id={`graph-level-${level}`}>Nivel del grafo {level}</h2>
-                <p>{versionCourses.length} materias</p>
-                <div className={styles.nodes}>
-                  {versionCourses.map((versionCourse) => (
-                    <GraphCourseCard
-                      key={versionCourse.id}
-                      versionCourse={versionCourse}
-                      state={states.get(versionCourse.id) ?? "BLOCKED"}
-                      selected={selectedId === versionCourse.id}
-                      dimmed={selectedId !== null && !relatedIds.has(versionCourse.id)}
-                      setNodeRef={(element) => {
-                        if (element) nodeRefs.current.set(versionCourse.id, element);
-                        else nodeRefs.current.delete(versionCourse.id);
-                      }}
-                      onSelect={() =>
-                        setSelectedId((current) =>
-                          current === versionCourse.id ? null : versionCourse.id,
-                        )
-                      }
-                      onMark={(mark) => markCourse(versionCourse.id, mark)}
-                    />
-                  ))}
-                </div>
-              </section>
-            ))}
+            <div className={styles.columns}>
+              {coursesByGraphLevel.map(([level, versionCourses]) => (
+                <section
+                  className={styles.levelColumn}
+                  key={level}
+                  aria-labelledby={`graph-level-${level}`}
+                >
+                  <h2 id={`graph-level-${level}`}>Nivel del grafo {level}</h2>
+                  <p>{versionCourses.length} materias</p>
+                  <div className={styles.nodes}>
+                    {versionCourses.map((versionCourse) => (
+                      <GraphCourseCard
+                        key={versionCourse.id}
+                        versionCourse={versionCourse}
+                        state={states.get(versionCourse.id) ?? "BLOCKED"}
+                        selected={selectedId === versionCourse.id}
+                        dimmed={
+                          selectedId !== null &&
+                          !relatedIds.has(versionCourse.id)
+                        }
+                        setNodeRef={(element) => {
+                          if (element) {
+                            nodeRefs.current.set(versionCourse.id, element);
+                          } else {
+                            nodeRefs.current.delete(versionCourse.id);
+                          }
+                        }}
+                        onSelect={() =>
+                          setSelectedId((current) =>
+                            current === versionCourse.id
+                              ? null
+                              : versionCourse.id,
+                          )
+                        }
+                      />
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+
+        {selectedVersionCourse && selectedState ? (
+          <aside
+            ref={detailPanelRef}
+            className={styles.detailPanel}
+            role="dialog"
+            aria-modal="false"
+            aria-labelledby="course-detail-title"
+            tabIndex={-1}
+          >
+            <div className={styles.detailHeader}>
+              <div>
+                <span className={styles.detailEyebrow}>Detalle de materia</span>
+                <h2 id="course-detail-title">
+                  {selectedCourse?.name ?? "Materia sin nombre"}
+                </h2>
+              </div>
+              <button type="button" onClick={() => setSelectedId(null)}>
+                Cerrar
+              </button>
+            </div>
+
+            <dl className={styles.detailFacts}>
+              <div>
+                <dt>Código</dt>
+                <dd>{selectedVersionCourse.academicCode}</dd>
+              </div>
+              <div>
+                <dt>Créditos</dt>
+                <dd>{selectedVersionCourse.credits}</dd>
+              </div>
+              <div>
+                <dt>Tipo</dt>
+                <dd>
+                  {selectedVersionCourse.mandatory ? "Obligatoria" : "Electiva"}
+                </dd>
+              </div>
+              <div>
+                <dt>Estado actual</dt>
+                <dd>
+                  <span className={styles.stateBadge} data-state={selectedState}>
+                    {stateLabels[selectedState]}
+                  </span>
+                </dd>
+              </div>
+            </dl>
+
+            <section className={styles.detailSection}>
+              <h3>Requisitos</h3>
+              {selectedRequirements.length > 0 ? (
+                <ul className={styles.requirements}>
+                  {selectedRequirements.map((line, index) => (
+                    <li key={`${line}-${index}`}>{line}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p>Sin requisitos.</p>
+              )}
+            </section>
+
+            <section className={styles.detailSection}>
+              <h3>Trayectoria</h3>
+              <div
+                className={styles.actions}
+                role="group"
+                aria-label={`Trayectoria para ${selectedCourse?.name ?? selectedVersionCourse.academicCode}`}
+              >
+                {(["UNMARKED", "IN_PROGRESS", "COMPLETED"] as const).map(
+                  (mark) => (
+                    <button
+                      key={mark}
+                      type="button"
+                      aria-pressed={selectedMark === mark}
+                      disabled={
+                        selectedState === "BLOCKED" && mark !== "UNMARKED"
+                      }
+                      onClick={() => markCourse(selectedVersionCourse.id, mark)}
+                    >
+                      {mark === "UNMARKED"
+                        ? "Sin marcar"
+                        : mark === "IN_PROGRESS"
+                          ? "En curso"
+                          : "Completada"}
+                    </button>
+                  ),
+                )}
+              </div>
+            </section>
+          </aside>
+        ) : null}
+      </div>
     </main>
   );
 }
