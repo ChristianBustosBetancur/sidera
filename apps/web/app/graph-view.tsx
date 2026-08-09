@@ -31,6 +31,10 @@ import {
   buildCurriculumGraph,
   type CourseEdge,
 } from "../lib/curriculum-graph";
+import {
+  hasExceededDragThreshold,
+  shouldSuppressClick,
+} from "../lib/pointer-gestures";
 import { type Mark, useTrajectory } from "../lib/trajectory";
 import styles from "./graph-view.module.css";
 
@@ -38,6 +42,7 @@ type Point = { x: number; y: number };
 type EdgePosition = CourseEdge & { start: Point; end: Point };
 type DragState = {
   pointerId: number;
+  captureTarget: Element;
   startX: number;
   startY: number;
   scrollLeft: number;
@@ -221,16 +226,20 @@ export function GraphView() {
       return;
     }
 
+    const captureTarget = event.target;
+    if (!(captureTarget instanceof Element)) return;
+
     suppressNextClickRef.current = false;
     dragStateRef.current = {
       pointerId: event.pointerId,
+      captureTarget,
       startX: event.clientX,
       startY: event.clientY,
       scrollLeft: event.currentTarget.scrollLeft,
       scrollTop: event.currentTarget.scrollTop,
       moved: false,
     };
-    event.currentTarget.setPointerCapture(event.pointerId);
+    captureTarget.setPointerCapture(event.pointerId);
     setIsDragging(true);
   };
 
@@ -242,7 +251,7 @@ export function GraphView() {
 
     const deltaX = event.clientX - dragState.startX;
     const deltaY = event.clientY - dragState.startY;
-    if (Math.hypot(deltaX, deltaY) > DRAG_THRESHOLD) {
+    if (hasExceededDragThreshold(deltaX, deltaY, DRAG_THRESHOLD)) {
       dragState.moved = true;
     }
 
@@ -260,10 +269,13 @@ export function GraphView() {
     const dragState = dragStateRef.current;
     if (!dragState || dragState.pointerId !== event.pointerId) return;
 
-    suppressNextClickRef.current = suppressClick && dragState.moved;
+    suppressNextClickRef.current = shouldSuppressClick(
+      dragState.moved,
+      suppressClick,
+    );
     dragStateRef.current = null;
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
+    if (dragState.captureTarget.hasPointerCapture(event.pointerId)) {
+      dragState.captureTarget.releasePointerCapture(event.pointerId);
     }
     setIsDragging(false);
   };
