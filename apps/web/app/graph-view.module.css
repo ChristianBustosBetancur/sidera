@@ -134,6 +134,11 @@
   cursor: pointer;
 }
 
+.graphNavigation .exitFocusButton {
+  color: var(--brand);
+  background: #ffffff;
+}
+
 .dragHint {
   display: none;
   color: var(--muted);
@@ -232,6 +237,7 @@
   stroke-width: 2;
   opacity: 0.7;
   vector-effect: non-scaling-stroke;
+  transition: opacity 120ms ease;
 }
 
 .corequisiteEdge {
@@ -283,7 +289,7 @@
 }
 
 .dimmed {
-  opacity: 0.3;
+  opacity: 0.1;
 }
 
 .courseSelector {
@@ -515,7 +521,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .courseCard {
+  .courseCard,
+  .prerequisiteEdge,
+  .corequisiteEdge {
     transition: none;
   }
 }

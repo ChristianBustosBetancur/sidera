@@ -269,7 +269,14 @@ export function GraphView() {
   };
 
   return (
-    <main className={styles.page}>
+    <main
+      className={styles.page}
+      onKeyDown={(event) => {
+        if (event.key !== "Escape" || selectedId === null) return;
+        event.preventDefault();
+        setSelectedId(null);
+      }}
+    >
       <header className={styles.header}>
         <div>
           <p>{unalCs2024Official.university.name}</p>
@@ -303,6 +310,15 @@ export function GraphView() {
 
       <div className={styles.graphNavigation}>
         <p className={styles.dragHint}>Arrastra para explorar el grafo.</p>
+        {selectedId ? (
+          <button
+            type="button"
+            className={styles.exitFocusButton}
+            onClick={() => setSelectedId(null)}
+          >
+            Salir del foco
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={() => {
@@ -344,6 +360,15 @@ export function GraphView() {
             suppressNextClickRef.current = false;
             event.preventDefault();
             event.stopPropagation();
+          }}
+          onClick={(event) => {
+            if (
+              event.target instanceof Element &&
+              event.target.closest("article")
+            ) {
+              return;
+            }
+            setSelectedId(null);
           }}
         >
           <div className={styles.canvas} ref={canvasRef}>
