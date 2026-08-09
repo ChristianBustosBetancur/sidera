@@ -1,5 +1,5 @@
 .page {
-  width: min(100% - 2rem, 120rem);
+  width: calc(100% - 1rem);
   margin: 0 auto;
   padding: 2rem 0 4rem;
 }
@@ -153,23 +153,20 @@
 }
 
 .graphRegion {
+  width: 100%;
   max-width: 100%;
   overflow-x: auto;
   overscroll-behavior-inline: contain;
-  background: rgb(236 239 233 / 52%);
-  border-radius: 0.25rem;
-  box-shadow: inset 0 1px 0 rgb(35 55 44 / 5%);
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .graphWorkspace {
   display: grid;
-  grid-template-columns: minmax(42rem, 1fr) minmax(19rem, 21rem);
-  gap: clamp(1.5rem, 2.5vw, 3rem);
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.5rem;
   align-items: start;
-}
-
-.graphWorkspace > .graphRegion:only-child {
-  grid-column: 1 / -1;
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -394,10 +391,10 @@
 }
 
 .detailPanel {
-  padding: 1.25rem 0 1.25rem 1.25rem;
-  background: rgb(255 255 255 / 72%);
-  border-left: 1px solid rgb(35 55 44 / 18%);
-  box-shadow: -1rem 0 2.5rem rgb(23 33 27 / 4%);
+  padding: 1.25rem;
+  background: rgb(255 255 255 / 92%);
+  border-top: 1px solid rgb(35 55 44 / 14%);
+  box-shadow: 0 -1rem 2.5rem rgb(23 33 27 / 3%);
 }
 
 .detailPanel:focus-visible {
@@ -485,23 +482,30 @@
   margin-bottom: 0;
 }
 
-@media (max-width: 72rem) {
+@media (min-width: 72.001rem) {
   .graphWorkspace {
-    grid-template-columns: minmax(0, 1fr);
+    position: relative;
+    display: block;
   }
 
   .detailPanel {
-    grid-row: 2;
+    position: absolute;
+    z-index: 3;
+    top: 0.75rem;
+    right: 0.75rem;
+    bottom: 0.75rem;
+    width: clamp(19rem, 19vw, 21rem);
+    overflow-y: auto;
     padding: 1.25rem;
-    border-top: 1px solid rgb(35 55 44 / 14%);
-    border-left: 0;
-    box-shadow: 0 -1rem 2.5rem rgb(23 33 27 / 3%);
+    background: rgb(255 255 255 / 96%);
+    border: 1px solid rgb(35 55 44 / 18%);
+    border-radius: 0.75rem;
+    box-shadow: 0 1rem 2.5rem rgb(23 33 27 / 16%);
   }
 }
 
 @media (max-width: 47rem) {
   .page {
-    width: min(100% - 1rem, 120rem);
     padding-top: 0.5rem;
   }
 
@@ -529,10 +533,6 @@
   .levelColumn {
     width: 15rem;
     flex-basis: 15rem;
-  }
-
-  .graphRegion {
-    background: rgb(236 239 233 / 38%);
   }
 }
 
