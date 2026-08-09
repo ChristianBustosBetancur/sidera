@@ -8,27 +8,19 @@ import type {
 } from "@sidera/curriculum-domain";
 import {
   calculatePlanProgress,
-  deriveVersionCourseState,
   type DerivedCourseState,
-  type StudentTrajectory,
 } from "@sidera/curriculum-engine";
 import { unalCs2024Official } from "@sidera/curriculum-snapshot";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
   coursesById,
   evaluationContext,
   planVersionStatus,
   requirementLines,
 } from "../lib/curriculum-data";
+import { type Mark, useTrajectory } from "../lib/trajectory";
 import styles from "./curriculum-view.module.css";
-
-type Mark = "UNMARKED" | "IN_PROGRESS" | "COMPLETED";
-
-const EMPTY_TRAJECTORY: StudentTrajectory = {
-  completedVersionCourseIds: [],
-  inProgressVersionCourseIds: [],
-};
 
 const groupingsByComponentId = new Map(
   unalCs2024Official.components.map((component) => [
@@ -202,16 +194,7 @@ function ComponentSection({
 }
 
 export function CurriculumView() {
-  const [trajectory, setTrajectory] = useState<StudentTrajectory>(EMPTY_TRAJECTORY);
-
-  const states = useMemo(() => {
-    return new Map(
-      unalCs2024Official.versionCourses.map((versionCourse) => [
-        versionCourse.id,
-        deriveVersionCourseState(versionCourse.id, evaluationContext, trajectory).state,
-      ]),
-    );
-  }, [trajectory]);
+  const { trajectory, states, markCourse } = useTrajectory();
 
   const progress = useMemo(
     () =>
@@ -222,19 +205,6 @@ export function CurriculumView() {
       ),
     [trajectory],
   );
-
-  function markCourse(versionCourseId: VersionCourseId, mark: Mark) {
-    setTrajectory((current) => ({
-      completedVersionCourseIds:
-        mark === "COMPLETED"
-          ? [...current.completedVersionCourseIds.filter((id) => id !== versionCourseId), versionCourseId]
-          : current.completedVersionCourseIds.filter((id) => id !== versionCourseId),
-      inProgressVersionCourseIds:
-        mark === "IN_PROGRESS"
-          ? [...current.inProgressVersionCourseIds.filter((id) => id !== versionCourseId), versionCourseId]
-          : current.inProgressVersionCourseIds.filter((id) => id !== versionCourseId),
-    }));
-  }
 
   const progressPercent = Math.round(progress.ratio * 100);
 

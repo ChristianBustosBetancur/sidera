@@ -5,9 +5,7 @@ import type {
   VersionCourseId,
 } from "@sidera/curriculum-domain";
 import {
-  deriveVersionCourseState,
   type DerivedCourseState,
-  type StudentTrajectory,
 } from "@sidera/curriculum-engine";
 import { unalCs2024Official } from "@sidera/curriculum-snapshot";
 import Link from "next/link";
@@ -20,7 +18,6 @@ import {
 } from "react";
 import {
   coursesById,
-  evaluationContext,
   planVersionStatus,
   requirementLines,
   versionCoursesById,
@@ -29,16 +26,11 @@ import {
   buildCurriculumGraph,
   type CourseEdge,
 } from "../lib/curriculum-graph";
+import { type Mark, useTrajectory } from "../lib/trajectory";
 import styles from "./graph-view.module.css";
 
-type Mark = "UNMARKED" | "IN_PROGRESS" | "COMPLETED";
 type Point = { x: number; y: number };
 type EdgePosition = CourseEdge & { start: Point; end: Point };
-
-const EMPTY_TRAJECTORY: StudentTrajectory = {
-  completedVersionCourseIds: [],
-  inProgressVersionCourseIds: [],
-};
 
 const graph = buildCurriculumGraph(unalCs2024Official.versionCourses);
 
@@ -133,27 +125,11 @@ function GraphCourseCard({
 }
 
 export function GraphView() {
-  const [trajectory, setTrajectory] =
-    useState<StudentTrajectory>(EMPTY_TRAJECTORY);
+  const { states, markCourse } = useTrajectory();
   const [selectedId, setSelectedId] = useState<VersionCourseId | null>(null);
   const [edgePositions, setEdgePositions] = useState<EdgePosition[]>([]);
   const canvasRef = useRef<HTMLDivElement>(null);
   const nodeRefs = useRef(new Map<VersionCourseId, HTMLElement>());
-
-  const states = useMemo(
-    () =>
-      new Map(
-        unalCs2024Official.versionCourses.map((versionCourse) => [
-          versionCourse.id,
-          deriveVersionCourseState(
-            versionCourse.id,
-            evaluationContext,
-            trajectory,
-          ).state,
-        ]),
-      ),
-    [trajectory],
-  );
 
   const coursesByGraphLevel = useMemo(() => {
     const result = new Map<number, VersionCourse[]>();
@@ -217,33 +193,6 @@ export function GraphView() {
       observer.disconnect();
     };
   }, [measureEdges]);
-
-  function markCourse(versionCourseId: VersionCourseId, mark: Mark) {
-    setTrajectory((current) => ({
-      completedVersionCourseIds:
-        mark === "COMPLETED"
-          ? [
-              ...current.completedVersionCourseIds.filter(
-                (id) => id !== versionCourseId,
-              ),
-              versionCourseId,
-            ]
-          : current.completedVersionCourseIds.filter(
-              (id) => id !== versionCourseId,
-            ),
-      inProgressVersionCourseIds:
-        mark === "IN_PROGRESS"
-          ? [
-              ...current.inProgressVersionCourseIds.filter(
-                (id) => id !== versionCourseId,
-              ),
-              versionCourseId,
-            ]
-          : current.inProgressVersionCourseIds.filter(
-              (id) => id !== versionCourseId,
-            ),
-    }));
-  }
 
   return (
     <main className={styles.page}>
