@@ -11,10 +11,12 @@ import {
   createContext,
   type ReactNode,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from "react";
 import { evaluationContext } from "./curriculum-data";
+import { loadTrajectory, saveTrajectory } from "./trajectory-storage";
 
 export type Mark = "UNMARKED" | "IN_PROGRESS" | "COMPLETED";
 
@@ -36,6 +38,21 @@ const TrajectoryContext = createContext<TrajectoryContextValue | undefined>(
 export function TrajectoryProvider({ children }: { children: ReactNode }) {
   const [trajectory, setTrajectory] =
     useState<StudentTrajectory>(EMPTY_TRAJECTORY);
+  const [hasLoadedStoredTrajectory, setHasLoadedStoredTrajectory] =
+    useState(false);
+
+  useEffect(() => {
+    setTrajectory(loadTrajectory());
+    setHasLoadedStoredTrajectory(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hasLoadedStoredTrajectory) {
+      return;
+    }
+
+    saveTrajectory(trajectory);
+  }, [hasLoadedStoredTrajectory, trajectory]);
 
   const states = useMemo(
     () =>
