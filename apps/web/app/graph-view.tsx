@@ -21,6 +21,7 @@ import {
 import {
   coursesById,
   evaluationContext,
+  planVersionStatus,
   requirementLines,
   versionCoursesById,
 } from "../lib/curriculum-data";
@@ -251,8 +252,16 @@ export function GraphView() {
           <p>{unalCs2024Official.university.name}</p>
           <h1>Grafo de prerrequisitos y correquisitos</h1>
           <span>
-            {unalCs2024Official.versionCourses.length} materias organizadas por
-            profundidad de sus relaciones directas.
+            {unalCs2024Official.planVersion.name} ·{" "}
+            {planVersionStatus(
+              unalCs2024Official.planVersion.provenance,
+              unalCs2024Official.planVersion.lifecycle,
+            )}
+          </span>
+          <span>
+            {unalCs2024Official.versionCourses.length} materias incluidas en el
+            dataset curado, organizadas por profundidad de sus relaciones
+            directas.
           </span>
         </div>
         <Link href="/">Ver plan por componentes</Link>

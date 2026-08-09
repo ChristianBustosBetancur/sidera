@@ -1,4 +1,6 @@
 import type {
+  Lifecycle,
+  Provenance,
   RequirementExpression,
   VersionCourseId,
 } from "@sidera/curriculum-domain";
@@ -30,6 +32,25 @@ export const componentsById = new Map(
 export const groupingsById = new Map(
   unalCs2024Official.groupings.map((grouping) => [grouping.id, grouping]),
 );
+
+const provenanceLabels: Record<Provenance, string> = {
+  official: "Oficial",
+  proposal: "Propuesta",
+  community: "Comunitaria",
+};
+
+const lifecycleLabels: Record<Lifecycle, string> = {
+  draft: "Borrador",
+  published: "Publicada",
+  archived: "Archivada",
+};
+
+export function planVersionStatus(
+  provenance: Provenance,
+  lifecycle: Lifecycle,
+): string {
+  return `Procedencia: ${provenanceLabels[provenance]} · Estado: ${lifecycleLabels[lifecycle]}`;
+}
 
 export function courseReference(versionCourseId: VersionCourseId): string {
   const versionCourse = versionCoursesById.get(versionCourseId);

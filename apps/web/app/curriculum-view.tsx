@@ -18,6 +18,7 @@ import { useMemo, useState } from "react";
 import {
   coursesById,
   evaluationContext,
+  planVersionStatus,
   requirementLines,
 } from "../lib/curriculum-data";
 import styles from "./curriculum-view.module.css";
@@ -243,7 +244,13 @@ export function CurriculumView() {
         <div>
           <p className={styles.eyebrow}>{unalCs2024Official.university.name}</p>
           <h1>{unalCs2024Official.academicProgram.name}</h1>
-          <p className={styles.planName}>{unalCs2024Official.planVersion.name} · Plan oficial</p>
+          <p className={styles.planName}>
+            {unalCs2024Official.planVersion.name} ·{" "}
+            {planVersionStatus(
+              unalCs2024Official.planVersion.provenance,
+              unalCs2024Official.planVersion.lifecycle,
+            )}
+          </p>
         </div>
         <section className={styles.progressCard} aria-labelledby="progress-title">
           <p id="progress-title">Progreso académico</p>
@@ -260,7 +267,10 @@ export function CurriculumView() {
           Explora el plan por componente y agrupación. Marca las materias disponibles para ver cómo cambia tu trayectoria.
         </p>
         <div>
-          <p>{unalCs2024Official.versionCourses.length} materias en el plan</p>
+          <p>
+            {unalCs2024Official.versionCourses.length} materias incluidas en el
+            dataset curado
+          </p>
           <Link href="/grafo">Ver grafo de prerrequisitos y correquisitos</Link>
         </div>
       </div>
