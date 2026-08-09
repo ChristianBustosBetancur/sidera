@@ -20,7 +20,9 @@ import {
   coursesById,
   evaluationContext,
   planVersionStatus,
+  progressBarPresentation,
   requirementLines,
+  sumInProgressCredits,
 } from "../lib/curriculum-data";
 import { type Mark, useTrajectory } from "../lib/trajectory";
 import styles from "./curriculum-view.module.css";
@@ -41,6 +43,14 @@ const versionCoursesByGroupingId = new Map(
     ),
   ]),
 );
+const versionCoursesByComponentId = new Map(
+  unalCs2024Official.components.map((component) => [
+    component.id,
+    (groupingsByComponentId.get(component.id) ?? []).flatMap(
+      (grouping) => versionCoursesByGroupingId.get(grouping.id) ?? [],
+    ),
+  ]),
+);
 
 const stateLabels: Record<DerivedCourseState, string> = {
   AVAILABLE: "Disponible",
@@ -48,6 +58,50 @@ const stateLabels: Record<DerivedCourseState, string> = {
   COMPLETED: "Completada",
   IN_PROGRESS: "En curso",
 };
+
+function ProgressBar({
+  completedCredits,
+  requiredCredits,
+  completedRatio,
+  inProgressCredits,
+}: {
+  completedCredits: number;
+  requiredCredits: number;
+  completedRatio: number;
+  inProgressCredits: number;
+}) {
+  const presentation = progressBarPresentation({
+    completedCredits,
+    requiredCredits,
+    completedRatio,
+    inProgressCredits,
+  });
+
+  return (
+    <div className={styles.progressBar}>
+      <div className={styles.progressText}>
+        <strong>{presentation.completedText}</strong>
+        {presentation.inProgressText ? (
+          <span>{presentation.inProgressText}</span>
+        ) : null}
+      </div>
+      <div
+        className={styles.progressTrack}
+        role="img"
+        aria-label={presentation.ariaLabel}
+      >
+        <span
+          className={styles.progressCompleted}
+          style={{ width: `${presentation.completedRatio * 100}%` }}
+        />
+        <span
+          className={styles.progressInProgress}
+          style={{ width: `${presentation.inProgressRatio * 100}%` }}
+        />
+      </div>
+    </div>
+  );
+}
 
 function CourseCard({
   versionCourse,
@@ -168,12 +222,25 @@ function GroupingSection({
   trajectory: StudentTrajectory;
   onMark: (versionCourseId: VersionCourseId, mark: Mark) => void;
 }) {
+  const progress = calculatePlanProgress(
+    { ...evaluationContext, versionCourses },
+    trajectory,
+    grouping.requiredCredits,
+  );
+  const inProgressCredits = sumInProgressCredits(versionCourses, trajectory);
+
   return (
     <section className={styles.grouping} aria-labelledby={`grouping-${grouping.id}`}>
       <div className={styles.groupingHeading}>
         <h3 id={`grouping-${grouping.id}`}>{grouping.name}</h3>
         <span>{grouping.requiredCredits} créditos requeridos</span>
       </div>
+      <ProgressBar
+        completedCredits={progress.completedCredits}
+        requiredCredits={progress.requiredCredits}
+        completedRatio={progress.ratio}
+        inProgressCredits={inProgressCredits}
+      />
       <div className={styles.courseGrid}>
         {versionCourses.map((versionCourse) => (
           <CourseCard
@@ -201,6 +268,17 @@ function ComponentSection({
   onMark: (versionCourseId: VersionCourseId, mark: Mark) => void;
 }) {
   const componentGroupings = groupingsByComponentId.get(component.id) ?? [];
+  const componentVersionCourses =
+    versionCoursesByComponentId.get(component.id) ?? [];
+  const progress = calculatePlanProgress(
+    { ...evaluationContext, versionCourses: componentVersionCourses },
+    trajectory,
+    component.requiredCredits,
+  );
+  const inProgressCredits = sumInProgressCredits(
+    componentVersionCourses,
+    trajectory,
+  );
 
   return (
     <section className={styles.component} aria-labelledby={`component-${component.id}`}>
@@ -210,16 +288,24 @@ function ComponentSection({
         <span>{component.requiredCredits} créditos requeridos</span>
       </div>
       {componentGroupings.length > 0 ? (
-        componentGroupings.map((grouping) => (
-          <GroupingSection
-            key={grouping.id}
-            grouping={grouping}
-            versionCourses={versionCoursesByGroupingId.get(grouping.id) ?? []}
-            states={states}
-            trajectory={trajectory}
-            onMark={onMark}
+        <>
+          <ProgressBar
+            completedCredits={progress.completedCredits}
+            requiredCredits={progress.requiredCredits}
+            completedRatio={progress.ratio}
+            inProgressCredits={inProgressCredits}
           />
-        ))
+          {componentGroupings.map((grouping) => (
+            <GroupingSection
+              key={grouping.id}
+              grouping={grouping}
+              versionCourses={versionCoursesByGroupingId.get(grouping.id) ?? []}
+              states={states}
+              trajectory={trajectory}
+              onMark={onMark}
+            />
+          ))}
+        </>
       ) : (
         <p className={styles.emptyGrouping}>Este componente no contiene agrupaciones de materias en el dataset.</p>
       )}
@@ -239,8 +325,10 @@ export function CurriculumView() {
       ),
     [trajectory],
   );
-
-  const progressPercent = Math.round(progress.ratio * 100);
+  const inProgressCredits = useMemo(
+    () => sumInProgressCredits(evaluationContext.versionCourses, trajectory),
+    [trajectory],
+  );
 
   return (
     <main className={styles.page}>
@@ -258,11 +346,12 @@ export function CurriculumView() {
         </div>
         <section className={styles.progressCard} aria-labelledby="progress-title">
           <p id="progress-title">Progreso académico</p>
-          <strong>
-            {progress.completedCredits} / {progress.requiredCredits} créditos
-          </strong>
-          <progress value={progress.ratio} max={1} aria-label={`${progressPercent}% completado`} />
-          <span>{progressPercent}% completado · ratio {progress.ratio.toFixed(2)}</span>
+          <ProgressBar
+            completedCredits={progress.completedCredits}
+            requiredCredits={progress.requiredCredits}
+            completedRatio={progress.ratio}
+            inProgressCredits={inProgressCredits}
+          />
         </section>
       </header>
 

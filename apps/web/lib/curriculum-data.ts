@@ -2,12 +2,14 @@ import type {
   Lifecycle,
   Provenance,
   RequirementExpression,
+  VersionCourse,
   VersionCourseId,
 } from "@sidera/curriculum-domain";
 import {
   collectBlockingEvaluations,
   type CurriculumEvaluationContext,
   type RequirementEvaluationNode,
+  type StudentTrajectory,
 } from "@sidera/curriculum-engine";
 import { unalCs2024Official } from "@sidera/curriculum-snapshot";
 
@@ -36,6 +38,60 @@ export const componentsById = new Map(
 export const groupingsById = new Map(
   unalCs2024Official.groupings.map((grouping) => [grouping.id, grouping]),
 );
+
+export function sumInProgressCredits(
+  versionCourses: readonly VersionCourse[],
+  trajectory: StudentTrajectory,
+): number {
+  const inProgressVersionCourseIds = new Set(
+    trajectory.inProgressVersionCourseIds,
+  );
+
+  return versionCourses
+    .filter((versionCourse) => inProgressVersionCourseIds.has(versionCourse.id))
+    .reduce((total, versionCourse) => total + versionCourse.credits, 0);
+}
+
+export interface ProgressBarPresentation {
+  completedPercent: number;
+  completedRatio: number;
+  inProgressRatio: number;
+  completedText: string;
+  inProgressText?: string;
+  ariaLabel: string;
+}
+
+export function progressBarPresentation({
+  completedCredits,
+  requiredCredits,
+  completedRatio,
+  inProgressCredits,
+}: {
+  completedCredits: number;
+  requiredCredits: number;
+  completedRatio: number;
+  inProgressCredits: number;
+}): ProgressBarPresentation {
+  const cappedCompletedRatio = Math.min(Math.max(completedRatio, 0), 1);
+  const inProgressRatio = Math.min(
+    inProgressCredits / requiredCredits,
+    1 - cappedCompletedRatio,
+  );
+  const completedPercent = Math.round(cappedCompletedRatio * 100);
+  const inProgressText =
+    inProgressCredits > 0
+      ? `+${inProgressCredits} créditos en curso`
+      : undefined;
+
+  return {
+    completedPercent,
+    completedRatio: cappedCompletedRatio,
+    inProgressRatio,
+    completedText: `${completedCredits} / ${requiredCredits} créditos · ${completedPercent}%`,
+    inProgressText,
+    ariaLabel: `${completedCredits} de ${requiredCredits} créditos completados, ${completedPercent}%${inProgressCredits > 0 ? `, más ${inProgressCredits} créditos en curso` : ""}`,
+  };
+}
 
 const provenanceLabels: Record<Provenance, string> = {
   official: "Oficial",
