@@ -1,7 +1,13 @@
 .page {
-  width: min(100% - 2rem, 96rem);
+  width: min(100% - 2rem, 120rem);
   margin: 0 auto;
   padding: 2rem 0 4rem;
+}
+
+.header,
+.controls {
+  width: min(100%, 96rem);
+  margin-inline: auto;
 }
 
 .header {
@@ -60,8 +66,8 @@
   justify-content: space-between;
   gap: 1rem 2rem;
   align-items: center;
-  margin: 1.25rem 0;
-  padding: 1rem;
+  margin-block: 1rem;
+  padding: 0.75rem 1rem;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 0.65rem;
@@ -116,7 +122,8 @@
   justify-content: flex-end;
   gap: 1rem;
   align-items: center;
-  margin-bottom: 0.75rem;
+  margin: 0 auto 0.5rem;
+  width: min(100%, 96rem);
 }
 
 .graphNavigation p {
@@ -149,15 +156,15 @@
   max-width: 100%;
   overflow-x: auto;
   overscroll-behavior-inline: contain;
-  background: #ecefe9;
-  border: 1px solid #cbd2cc;
-  border-radius: 0.75rem;
+  background: rgb(236 239 233 / 52%);
+  border-radius: 0.25rem;
+  box-shadow: inset 0 1px 0 rgb(35 55 44 / 5%);
 }
 
 .graphWorkspace {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(18rem, 22rem);
-  gap: 1rem;
+  grid-template-columns: minmax(42rem, 1fr) minmax(19rem, 21rem);
+  gap: clamp(1.5rem, 2.5vw, 3rem);
   align-items: start;
 }
 
@@ -171,8 +178,8 @@
   }
 
   .graphRegion {
-    height: min(80vh, 900px);
-    min-height: 32rem;
+    height: min(88vh, 1200px);
+    min-height: 36rem;
     overflow: auto;
     cursor: grab;
   }
@@ -387,11 +394,10 @@
 }
 
 .detailPanel {
-  padding: 1rem;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 0.75rem;
-  box-shadow: 0 8px 24px rgb(23 33 27 / 12%);
+  padding: 1.25rem 0 1.25rem 1.25rem;
+  background: rgb(255 255 255 / 72%);
+  border-left: 1px solid rgb(35 55 44 / 18%);
+  box-shadow: -1rem 0 2.5rem rgb(23 33 27 / 4%);
 }
 
 .detailPanel:focus-visible {
@@ -479,9 +485,23 @@
   margin-bottom: 0;
 }
 
+@media (max-width: 72rem) {
+  .graphWorkspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .detailPanel {
+    grid-row: 2;
+    padding: 1.25rem;
+    border-top: 1px solid rgb(35 55 44 / 14%);
+    border-left: 0;
+    box-shadow: 0 -1rem 2.5rem rgb(23 33 27 / 3%);
+  }
+}
+
 @media (max-width: 47rem) {
   .page {
-    width: min(100% - 1rem, 96rem);
+    width: min(100% - 1rem, 120rem);
     padding-top: 0.5rem;
   }
 
@@ -511,12 +531,8 @@
     flex-basis: 15rem;
   }
 
-  .graphWorkspace {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .detailPanel {
-    grid-row: 2;
+  .graphRegion {
+    background: rgb(236 239 233 / 38%);
   }
 }
 
