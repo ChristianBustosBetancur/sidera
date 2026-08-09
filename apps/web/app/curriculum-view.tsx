@@ -8,12 +8,15 @@ import type {
 } from "@sidera/curriculum-domain";
 import {
   calculatePlanProgress,
+  deriveVersionCourseState,
   type DerivedCourseState,
+  type StudentTrajectory,
 } from "@sidera/curriculum-engine";
 import { unalCs2024Official } from "@sidera/curriculum-snapshot";
 import Link from "next/link";
 import { useMemo } from "react";
 import {
+  blockingReasons,
   coursesById,
   evaluationContext,
   planVersionStatus,
@@ -49,10 +52,12 @@ const stateLabels: Record<DerivedCourseState, string> = {
 function CourseCard({
   versionCourse,
   state,
+  trajectory,
   onMark,
 }: {
   versionCourse: VersionCourse;
   state: DerivedCourseState;
+  trajectory: StudentTrajectory;
   onMark: (mark: Mark) => void;
 }) {
   const course = coursesById.get(versionCourse.courseId);
@@ -62,6 +67,14 @@ function CourseCard({
   const currentMark: Mark =
     state === "COMPLETED" || state === "IN_PROGRESS" ? state : "UNMARKED";
   const blocked = state === "BLOCKED";
+  const derivedState = blocked
+    ? deriveVersionCourseState(versionCourse.id, evaluationContext, trajectory)
+    : undefined;
+  const blockedReasonText =
+    derivedState?.state === "BLOCKED" &&
+    derivedState.eligibility.requirementEvaluation
+      ? blockingReasons(derivedState.eligibility.requirementEvaluation)
+      : [];
 
   return (
     <article className={`${styles.courseCard} ${styles[state.toLowerCase()]}`}>
@@ -90,6 +103,21 @@ function CourseCard({
       ) : (
         <p className={styles.noRequirements}>Sin prerrequisitos ni correquisitos.</p>
       )}
+
+      {blocked ? (
+        <section className={styles.blockingReasons}>
+          <h5>Por qué está bloqueada</h5>
+          {blockedReasonText.length > 0 ? (
+            <ul>
+              {blockedReasonText.map((reason, index) => (
+                <li key={`${reason}-${index}`}>{reason}</li>
+              ))}
+            </ul>
+          ) : (
+            <p>No cumple los requisitos actuales del plan</p>
+          )}
+        </section>
+      ) : null}
 
       <div
         className={styles.actions}
@@ -131,11 +159,13 @@ function GroupingSection({
   grouping,
   versionCourses,
   states,
+  trajectory,
   onMark,
 }: {
   grouping: Grouping;
   versionCourses: readonly VersionCourse[];
   states: ReadonlyMap<VersionCourseId, DerivedCourseState>;
+  trajectory: StudentTrajectory;
   onMark: (versionCourseId: VersionCourseId, mark: Mark) => void;
 }) {
   return (
@@ -150,6 +180,7 @@ function GroupingSection({
             key={versionCourse.id}
             versionCourse={versionCourse}
             state={states.get(versionCourse.id) ?? "BLOCKED"}
+            trajectory={trajectory}
             onMark={(mark) => onMark(versionCourse.id, mark)}
           />
         ))}
@@ -161,10 +192,12 @@ function GroupingSection({
 function ComponentSection({
   component,
   states,
+  trajectory,
   onMark,
 }: {
   component: Component;
   states: ReadonlyMap<VersionCourseId, DerivedCourseState>;
+  trajectory: StudentTrajectory;
   onMark: (versionCourseId: VersionCourseId, mark: Mark) => void;
 }) {
   const componentGroupings = groupingsByComponentId.get(component.id) ?? [];
@@ -183,6 +216,7 @@ function ComponentSection({
             grouping={grouping}
             versionCourses={versionCoursesByGroupingId.get(grouping.id) ?? []}
             states={states}
+            trajectory={trajectory}
             onMark={onMark}
           />
         ))
@@ -251,6 +285,7 @@ export function CurriculumView() {
             key={component.id}
             component={component}
             states={states}
+            trajectory={trajectory}
             onMark={markCourse}
           />
         ))}

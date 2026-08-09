@@ -4,7 +4,11 @@ import type {
   RequirementExpression,
   VersionCourseId,
 } from "@sidera/curriculum-domain";
-import type { CurriculumEvaluationContext } from "@sidera/curriculum-engine";
+import {
+  collectBlockingEvaluations,
+  type CurriculumEvaluationContext,
+  type RequirementEvaluationNode,
+} from "@sidera/curriculum-engine";
 import { unalCs2024Official } from "@sidera/curriculum-snapshot";
 
 export const evaluationContext: CurriculumEvaluationContext = {
@@ -58,6 +62,60 @@ export function courseReference(versionCourseId: VersionCourseId): string {
   return versionCourse && course
     ? `${versionCourse.academicCode} ${course.name}`
     : "Materia no encontrada";
+}
+
+function blockingReason(evaluation: RequirementEvaluationNode): string | undefined {
+  if (evaluation.diagnostics.length > 0) return undefined;
+
+  switch (evaluation.type) {
+    case "COURSE_COMPLETED":
+      return `Te falta aprobar ${courseReference(evaluation.versionCourseId)}`;
+    case "COURSE_COMPLETED_OR_CONCURRENT":
+      return `Te falta cursar (o aprobar) ${courseReference(evaluation.versionCourseId)}`;
+    case "MIN_TOTAL_CREDITS":
+      return `${evaluation.actual}/${evaluation.required} créditos aprobados en el plan, te faltan ${Math.max(evaluation.required - evaluation.actual, 0)}`;
+    case "MIN_COMPONENT_CREDITS": {
+      const component = evaluation.componentId
+        ? componentsById.get(evaluation.componentId)
+        : undefined;
+      return `${evaluation.actual}/${evaluation.required} créditos aprobados en ${component?.name ?? "el componente indicado"}, te faltan ${Math.max(evaluation.required - evaluation.actual, 0)}`;
+    }
+    case "MIN_GROUPING_CREDITS": {
+      const grouping = evaluation.groupingId
+        ? groupingsById.get(evaluation.groupingId)
+        : undefined;
+      return `${evaluation.actual}/${evaluation.required} créditos aprobados en ${grouping?.name ?? "la agrupación indicada"}, te faltan ${Math.max(evaluation.required - evaluation.actual, 0)}`;
+    }
+    case "MIN_GROUPING_COURSES": {
+      const grouping = groupingsById.get(evaluation.groupingId);
+      return `${evaluation.actual}/${evaluation.required} materias aprobadas en ${grouping?.name ?? "la agrupación indicada"}, te faltan ${Math.max(evaluation.required - evaluation.actual, 0)}`;
+    }
+    case "ANY":
+    case "AT_LEAST": {
+      const alternatives = evaluation.children
+        .filter((child) => !child.satisfied)
+        .map(blockingReason)
+        .filter((reason): reason is string => reason !== undefined);
+      return alternatives.length > 0
+        ? `Te falta satisfacer alguna de estas alternativas: ${alternatives.join("; ")}`
+        : undefined;
+    }
+    case "ALL": {
+      const reasons = evaluation.children
+        .filter((child) => !child.satisfied)
+        .map(blockingReason)
+        .filter((reason): reason is string => reason !== undefined);
+      return reasons.length > 0 ? reasons.join("; ") : undefined;
+    }
+  }
+}
+
+export function blockingReasons(
+  evaluation: RequirementEvaluationNode,
+): string[] {
+  return collectBlockingEvaluations(evaluation)
+    .map(blockingReason)
+    .filter((reason): reason is string => reason !== undefined);
 }
 
 export function requirementLines(

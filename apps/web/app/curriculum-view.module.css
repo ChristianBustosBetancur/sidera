@@ -259,6 +259,29 @@
   font-size: 0.86rem;
 }
 
+.blockingReasons {
+  margin: 0 0 1rem;
+  color: #3f4a43;
+  font-size: 0.86rem;
+}
+
+.blockingReasons h5,
+.blockingReasons p,
+.blockingReasons ul {
+  margin: 0;
+}
+
+.blockingReasons ul {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+  padding-left: 1.2rem;
+}
+
+.blockingReasons p {
+  margin-top: 0.35rem;
+}
+
 .actions {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

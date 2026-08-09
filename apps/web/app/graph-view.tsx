@@ -4,7 +4,10 @@ import type {
   VersionCourse,
   VersionCourseId,
 } from "@sidera/curriculum-domain";
-import { type DerivedCourseState } from "@sidera/curriculum-engine";
+import {
+  deriveVersionCourseState,
+  type DerivedCourseState,
+} from "@sidera/curriculum-engine";
 import { unalCs2024Official } from "@sidera/curriculum-snapshot";
 import Link from "next/link";
 import {
@@ -17,7 +20,9 @@ import {
   useState,
 } from "react";
 import {
+  blockingReasons,
   coursesById,
+  evaluationContext,
   planVersionStatus,
   requirementLines,
   versionCoursesById,
@@ -99,7 +104,7 @@ function GraphCourseCard({
 }
 
 export function GraphView() {
-  const { states, markCourse } = useTrajectory();
+  const { trajectory, states, markCourse } = useTrajectory();
   const [selectedId, setSelectedId] = useState<VersionCourseId | null>(null);
   const [edgePositions, setEdgePositions] = useState<EdgePosition[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -146,6 +151,19 @@ export function GraphView() {
   const selectedRequirements = selectedVersionCourse?.requirements
     ? requirementLines(selectedVersionCourse.requirements)
     : [];
+  const selectedDerivedState =
+    selectedVersionCourse && selectedState === "BLOCKED"
+      ? deriveVersionCourseState(
+          selectedVersionCourse.id,
+          evaluationContext,
+          trajectory,
+        )
+      : undefined;
+  const selectedBlockingReasons =
+    selectedDerivedState?.state === "BLOCKED" &&
+    selectedDerivedState.eligibility.requirementEvaluation
+      ? blockingReasons(selectedDerivedState.eligibility.requirementEvaluation)
+      : [];
 
   useEffect(() => {
     if (selectedId) detailPanelRef.current?.focus();
@@ -445,6 +463,21 @@ export function GraphView() {
                 <p>Sin requisitos.</p>
               )}
             </section>
+
+            {selectedState === "BLOCKED" ? (
+              <section className={styles.detailSection}>
+                <h3>Por qué está bloqueada</h3>
+                {selectedBlockingReasons.length > 0 ? (
+                  <ul className={styles.requirements}>
+                    {selectedBlockingReasons.map((reason, index) => (
+                      <li key={`${reason}-${index}`}>{reason}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p>No cumple los requisitos actuales del plan</p>
+                )}
+              </section>
+            ) : null}
 
             <section className={styles.detailSection}>
               <h3>Trayectoria</h3>
