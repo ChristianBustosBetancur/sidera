@@ -10,6 +10,7 @@ import {
 import { unalCs2024Official } from "@sidera/curriculum-snapshot";
 import Link from "next/link";
 import {
+  type PointerEvent as ReactPointerEvent,
   useCallback,
   useLayoutEffect,
   useMemo,
@@ -31,6 +32,16 @@ import styles from "./graph-view.module.css";
 
 type Point = { x: number; y: number };
 type EdgePosition = CourseEdge & { start: Point; end: Point };
+type DragState = {
+  pointerId: number;
+  startX: number;
+  startY: number;
+  scrollLeft: number;
+  scrollTop: number;
+  moved: boolean;
+};
+
+const DRAG_THRESHOLD = 5;
 
 const graph = buildCurriculumGraph(unalCs2024Official.versionCourses);
 
@@ -128,8 +139,12 @@ export function GraphView() {
   const { states, markCourse } = useTrajectory();
   const [selectedId, setSelectedId] = useState<VersionCourseId | null>(null);
   const [edgePositions, setEdgePositions] = useState<EdgePosition[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const graphRegionRef = useRef<HTMLElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const nodeRefs = useRef(new Map<VersionCourseId, HTMLElement>());
+  const dragStateRef = useRef<DragState | null>(null);
+  const suppressNextClickRef = useRef(false);
 
   const coursesByGraphLevel = useMemo(() => {
     const result = new Map<number, VersionCourse[]>();
@@ -194,6 +209,62 @@ export function GraphView() {
     };
   }, [measureEdges]);
 
+  const handlePointerDown = (event: ReactPointerEvent<HTMLElement>) => {
+    if (
+      event.pointerType === "touch" ||
+      (event.pointerType !== "mouse" && event.pointerType !== "pen") ||
+      event.button !== 0
+    ) {
+      return;
+    }
+
+    suppressNextClickRef.current = false;
+    dragStateRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      scrollLeft: event.currentTarget.scrollLeft,
+      scrollTop: event.currentTarget.scrollTop,
+      moved: false,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setIsDragging(true);
+  };
+
+  const handlePointerMove = (event: ReactPointerEvent<HTMLElement>) => {
+    if (event.pointerType === "touch") return;
+
+    const dragState = dragStateRef.current;
+    if (!dragState || dragState.pointerId !== event.pointerId) return;
+
+    const deltaX = event.clientX - dragState.startX;
+    const deltaY = event.clientY - dragState.startY;
+    if (Math.hypot(deltaX, deltaY) > DRAG_THRESHOLD) {
+      dragState.moved = true;
+    }
+
+    event.preventDefault();
+    event.currentTarget.scrollLeft = dragState.scrollLeft - deltaX;
+    event.currentTarget.scrollTop = dragState.scrollTop - deltaY;
+  };
+
+  const finishDrag = (
+    event: ReactPointerEvent<HTMLElement>,
+    suppressClick: boolean,
+  ) => {
+    if (event.pointerType === "touch") return;
+
+    const dragState = dragStateRef.current;
+    if (!dragState || dragState.pointerId !== event.pointerId) return;
+
+    suppressNextClickRef.current = suppressClick && dragState.moved;
+    dragStateRef.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    setIsDragging(false);
+  };
+
   return (
     <main className={styles.page}>
       <header className={styles.header}>
@@ -227,6 +298,21 @@ export function GraphView() {
         </p>
       </section>
 
+      <div className={styles.graphNavigation}>
+        <p className={styles.dragHint}>Arrastra para explorar el grafo.</p>
+        <button
+          type="button"
+          onClick={() => {
+            const graphRegion = graphRegionRef.current;
+            if (!graphRegion) return;
+            graphRegion.scrollLeft = 0;
+            graphRegion.scrollTop = 0;
+          }}
+        >
+          Volver al inicio
+        </button>
+      </div>
+
       {graph.cycles.length > 0 ? (
         <section className={styles.graphError} role="alert">
           <strong>Se detectaron relaciones cíclicas en los datos.</strong>
@@ -240,7 +326,22 @@ export function GraphView() {
         </section>
       ) : null}
 
-      <section className={styles.graphRegion} aria-label="Grafo curricular">
+      <section
+        ref={graphRegionRef}
+        className={`${styles.graphRegion} ${isDragging ? styles.dragging : ""}`}
+        aria-label="Grafo curricular"
+        tabIndex={0}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={(event) => finishDrag(event, true)}
+        onPointerCancel={(event) => finishDrag(event, false)}
+        onClickCapture={(event) => {
+          if (!suppressNextClickRef.current) return;
+          suppressNextClickRef.current = false;
+          event.preventDefault();
+          event.stopPropagation();
+        }}
+      >
         <div className={styles.canvas} ref={canvasRef}>
           <svg className={styles.edges} aria-hidden="true">
             {edgePositions.map((edge, index) => {

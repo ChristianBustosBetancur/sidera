@@ -111,6 +111,35 @@
   margin: 0.35rem 0 0;
 }
 
+.graphNavigation {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.graphNavigation p {
+  margin: 0;
+}
+
+.graphNavigation button {
+  min-height: 2.5rem;
+  padding: 0.45rem 0.8rem;
+  color: #ffffff;
+  background: var(--brand);
+  border: 1px solid var(--brand);
+  border-radius: 0.45rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.dragHint {
+  display: none;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
 .graphRegion {
   max-width: 100%;
   overflow-x: auto;
@@ -118,6 +147,24 @@
   background: #ecefe9;
   border: 1px solid #cbd2cc;
   border-radius: 0.75rem;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .dragHint {
+    display: block;
+  }
+
+  .graphRegion {
+    height: min(80vh, 900px);
+    min-height: 32rem;
+    overflow: auto;
+    cursor: grab;
+  }
+
+  .graphRegion.dragging {
+    cursor: grabbing;
+    user-select: none;
+  }
 }
 
 .canvas {
