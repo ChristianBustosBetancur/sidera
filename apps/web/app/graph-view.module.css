@@ -1,13 +1,6 @@
 .page {
-  width: calc(100% - 1rem);
-  margin: 0 auto;
-  padding: 2rem 0 4rem;
-}
-
-.header,
-.controls {
-  width: min(100%, 96rem);
-  margin-inline: auto;
+  width: 100%;
+  padding: 2rem clamp(1rem, 4vw, 4rem) 4rem;
 }
 
 .header {
@@ -122,8 +115,7 @@
   justify-content: flex-end;
   gap: 1rem;
   align-items: center;
-  margin: 0 auto 0.5rem;
-  width: min(100%, 96rem);
+  margin-bottom: 0.5rem;
 }
 
 .graphNavigation p {
