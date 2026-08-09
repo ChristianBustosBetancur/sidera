@@ -3,19 +3,23 @@
 import type {
   Component,
   Grouping,
-  RequirementExpression,
   VersionCourse,
   VersionCourseId,
 } from "@sidera/curriculum-domain";
 import {
   calculatePlanProgress,
   deriveVersionCourseState,
-  type CurriculumEvaluationContext,
   type DerivedCourseState,
   type StudentTrajectory,
 } from "@sidera/curriculum-engine";
 import { unalCs2024Official } from "@sidera/curriculum-snapshot";
+import Link from "next/link";
 import { useMemo, useState } from "react";
+import {
+  coursesById,
+  evaluationContext,
+  requirementLines,
+} from "../lib/curriculum-data";
 import styles from "./curriculum-view.module.css";
 
 type Mark = "UNMARKED" | "IN_PROGRESS" | "COMPLETED";
@@ -25,28 +29,6 @@ const EMPTY_TRAJECTORY: StudentTrajectory = {
   inProgressVersionCourseIds: [],
 };
 
-const evaluationContext: CurriculumEvaluationContext = {
-  planVersionId: unalCs2024Official.planVersion.id,
-  versionCourses: unalCs2024Official.versionCourses,
-  groupings: unalCs2024Official.groupings,
-  components: unalCs2024Official.components,
-};
-
-const coursesById = new Map(
-  unalCs2024Official.courses.map((course) => [course.id, course]),
-);
-const versionCoursesById = new Map(
-  unalCs2024Official.versionCourses.map((versionCourse) => [
-    versionCourse.id,
-    versionCourse,
-  ]),
-);
-const componentsById = new Map(
-  unalCs2024Official.components.map((component) => [component.id, component]),
-);
-const groupingsById = new Map(
-  unalCs2024Official.groupings.map((grouping) => [grouping.id, grouping]),
-);
 const groupingsByComponentId = new Map(
   unalCs2024Official.components.map((component) => [
     component.id,
@@ -70,47 +52,6 @@ const stateLabels: Record<DerivedCourseState, string> = {
   COMPLETED: "Completada",
   IN_PROGRESS: "En curso",
 };
-
-function courseReference(versionCourseId: VersionCourseId): string {
-  const versionCourse = versionCoursesById.get(versionCourseId);
-  const course = versionCourse && coursesById.get(versionCourse.courseId);
-  return versionCourse && course
-    ? `${versionCourse.academicCode} ${course.name}`
-    : "Materia no encontrada";
-}
-
-function requirementLines(requirement: RequirementExpression): string[] {
-  switch (requirement.type) {
-    case "COURSE_COMPLETED":
-      return [`Prerrequisito: ${courseReference(requirement.versionCourseId)}`];
-    case "COURSE_COMPLETED_OR_CONCURRENT":
-      return [`Correquisito: ${courseReference(requirement.versionCourseId)}`];
-    case "MIN_TOTAL_CREDITS":
-      return [`Requisito: ${requirement.credits} créditos aprobados en el plan`];
-    case "MIN_COMPONENT_CREDITS": {
-      const component = componentsById.get(requirement.componentId);
-      return [
-        `Requisito: ${requirement.credits} créditos aprobados en ${component?.name ?? "el componente indicado"}`,
-      ];
-    }
-    case "MIN_GROUPING_CREDITS": {
-      const grouping = groupingsById.get(requirement.groupingId);
-      return [
-        `Requisito: ${requirement.credits} créditos aprobados en ${grouping?.name ?? "la agrupación indicada"}`,
-      ];
-    }
-    case "MIN_GROUPING_COURSES": {
-      const grouping = groupingsById.get(requirement.groupingId);
-      return [
-        `Requisito: ${requirement.courseCount} materias aprobadas en ${grouping?.name ?? "la agrupación indicada"}`,
-      ];
-    }
-    case "ALL":
-    case "ANY":
-    case "AT_LEAST":
-      return requirement.children.flatMap(requirementLines);
-  }
-}
 
 function CourseCard({
   versionCourse,
@@ -318,7 +259,10 @@ export function CurriculumView() {
         <p>
           Explora el plan por componente y agrupación. Marca las materias disponibles para ver cómo cambia tu trayectoria.
         </p>
-        <p>{unalCs2024Official.versionCourses.length} materias en el plan</p>
+        <div>
+          <p>{unalCs2024Official.versionCourses.length} materias en el plan</p>
+          <Link href="/grafo">Ver grafo de prerrequisitos y correquisitos</Link>
+        </div>
       </div>
 
       <div className={styles.curriculumTree}>
