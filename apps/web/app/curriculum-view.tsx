@@ -370,11 +370,14 @@ export function CurriculumView() {
         </p>
         <div>
           <p>
+            Visualiza prerrequisitos, correquisitos y rutas entre materias
+          </p>
+          <p className={styles.introMeta}>
             {unalCs2024Official.versionCourses.length} materias incluidas en el
             dataset curado
           </p>
           <Link href="/grafo" className={styles.graphCta}>
-            Explorar grafo
+            Explorar grafo interactivo
             <span aria-hidden="true">→</span>
           </Link>
         </div>
