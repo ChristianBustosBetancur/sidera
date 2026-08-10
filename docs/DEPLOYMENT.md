@@ -17,3 +17,7 @@ Un Preview Deployment sirve únicamente para revisar cambios. No dispara ni impl
 ## Responsabilidad de configuración
 
 La configuración del proyecto y de los Preview Deployments se realiza por una persona responsable directamente en Vercel. Este repositorio no incorpora para este fin `vercel.json`, variables de entorno ni workflows nuevos de CI/CD.
+
+## Estado de la conexión
+
+El proyecto ya está conectado a Vercel. Cada push a `feat/curriculum-visualization` genera un Preview Deployment; `main` permanece como rama de producción.
