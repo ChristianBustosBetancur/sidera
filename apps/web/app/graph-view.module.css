@@ -474,7 +474,7 @@
   margin-bottom: 0;
 }
 
-@media (max-width: 72rem) {
+@media (max-width: 72rem) and ((hover: none) or (pointer: coarse)) {
   .dimmed {
     opacity: 0.35;
   }
