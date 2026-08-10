@@ -46,7 +46,7 @@ type DragState = {
   startX: number;
   startY: number;
   scrollLeft: number;
-  scrollTop: number;
+  startScrollY: number;
   moved: boolean;
 };
 
@@ -236,7 +236,7 @@ export function GraphView() {
       startX: event.clientX,
       startY: event.clientY,
       scrollLeft: event.currentTarget.scrollLeft,
-      scrollTop: event.currentTarget.scrollTop,
+      startScrollY: window.scrollY,
       moved: false,
     };
     captureTarget.setPointerCapture(event.pointerId);
@@ -257,7 +257,7 @@ export function GraphView() {
 
     event.preventDefault();
     event.currentTarget.scrollLeft = dragState.scrollLeft - deltaX;
-    event.currentTarget.scrollTop = dragState.scrollTop - deltaY;
+    window.scrollTo(window.scrollX, dragState.startScrollY - deltaY);
   };
 
   const finishDrag = (
@@ -337,7 +337,8 @@ export function GraphView() {
             const graphRegion = graphRegionRef.current;
             if (!graphRegion) return;
             graphRegion.scrollLeft = 0;
-            graphRegion.scrollTop = 0;
+            const graphTop = graphRegion.getBoundingClientRect().top + window.scrollY;
+            window.scrollTo(0, Math.max(0, graphTop - 16));
           }}
         >
           Volver al inicio

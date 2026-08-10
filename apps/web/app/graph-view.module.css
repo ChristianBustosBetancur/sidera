@@ -167,9 +167,6 @@
   }
 
   .graphRegion {
-    height: min(88vh, 1200px);
-    min-height: 36rem;
-    overflow: auto;
     cursor: grab;
   }
 
@@ -500,12 +497,12 @@
   }
 
   .detailPanel {
-    position: absolute;
-    z-index: 3;
-    top: 0.75rem;
-    right: 0.75rem;
+    position: fixed;
+    z-index: 20;
+    top: clamp(1rem, 4vw, 4rem);
+    right: clamp(1rem, 4vw, 4rem);
     width: clamp(19rem, 19vw, 21rem);
-    max-height: calc(100% - 1.5rem);
+    max-height: min(70vh, calc(100vh - 2rem));
     overflow-y: auto;
     padding: 1.25rem;
     background: rgb(255 255 255 / 96%);
