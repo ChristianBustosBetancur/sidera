@@ -1,0 +1,30 @@
+.previewBadge {
+  position: fixed;
+  z-index: 10;
+  bottom: max(0.75rem, env(safe-area-inset-bottom));
+  left: max(0.75rem, env(safe-area-inset-left));
+  max-width: calc(100vw - 1.5rem);
+  padding: 0.35rem 0.65rem;
+  overflow: hidden;
+  color: var(--brand);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: rgb(255 255 255 / 92%);
+  border: 1px solid var(--line);
+  border-radius: 999rem;
+  box-shadow: 0 0.25rem 0.8rem rgb(23 33 27 / 10%);
+  pointer-events: none;
+}
+
+@media (max-width: 47rem) {
+  .previewBadge {
+    bottom: max(0.5rem, env(safe-area-inset-bottom));
+    left: max(0.5rem, env(safe-area-inset-left));
+    max-width: calc(100vw - 1rem);
+    padding: 0.3rem 0.55rem;
+    font-size: 0.68rem;
+  }
+}
