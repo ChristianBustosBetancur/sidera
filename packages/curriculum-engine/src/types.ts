@@ -34,6 +34,51 @@ export type PlanProgressResult = {
   diagnostics: readonly UnresolvedReferenceDiagnostic[];
 };
 
+export type CreditProgress = {
+  rawCredits: number;
+  satisfiedCredits: number;
+  excessCredits: number;
+  projectedSatisfiedCredits: number;
+};
+
+export type GroupingCreditProgress = CreditProgress & {
+  groupingId: GroupingId;
+  requiredCredits: number;
+};
+
+export type ComponentCreditProgress = CreditProgress & {
+  componentId: ComponentId;
+  requiredCredits: number;
+  groupings: readonly GroupingCreditProgress[];
+};
+
+export type HierarchicalRequiredCreditsDiagnostic = {
+  code: "INCONSISTENT_HIERARCHICAL_REQUIRED_CREDITS";
+  scope: "COMPONENT" | "PLAN";
+  scopeId: ComponentId | PlanVersionId;
+  requiredCredits: number;
+  childrenRequiredCredits: number;
+};
+
+export type NegativeElectiveCapacityDiagnostic = {
+  code: "NEGATIVE_ELECTIVE_CREDIT_CAPACITY";
+  groupingId: GroupingId;
+  requiredCredits: number;
+  mandatoryCredits: number;
+};
+
+export type SatisfiedCreditProgressDiagnostic =
+  | UnresolvedReferenceDiagnostic
+  | HierarchicalRequiredCreditsDiagnostic
+  | NegativeElectiveCapacityDiagnostic;
+
+export type SatisfiedPlanProgressResult = CreditProgress & {
+  planVersionId: PlanVersionId;
+  requiredCredits: number;
+  components: readonly ComponentCreditProgress[];
+  diagnostics: readonly SatisfiedCreditProgressDiagnostic[];
+};
+
 export type InvalidThresholdDiagnostic = {
   code: "INVALID_THRESHOLD";
   threshold: number;
