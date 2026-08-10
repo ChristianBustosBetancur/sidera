@@ -10,6 +10,7 @@ import {
   type ComponentCreditProgress,
   type CreditProgress,
   type CurriculumEvaluationContext,
+  type DerivedCourseState,
   type RequirementEvaluationNode,
 } from "@sidera/curriculum-engine";
 import { unalCs2024Official } from "@sidera/curriculum-snapshot";
@@ -54,6 +55,64 @@ export interface ProgressBarArguments {
   requiredCredits: number;
   completedRatio: number;
   inProgressCredits: number;
+}
+
+export interface PlanProgressProjection {
+  projectedCredits: number;
+  projectedPercent: number;
+  markerRatio: number;
+  text: string;
+  ariaLabel: string;
+}
+
+export function planProgressProjection({
+  satisfiedCredits,
+  projectedSatisfiedCredits,
+  requiredCredits,
+}: {
+  satisfiedCredits: number;
+  projectedSatisfiedCredits: number;
+  requiredCredits: number;
+}): PlanProgressProjection | undefined {
+  if (projectedSatisfiedCredits === satisfiedCredits) return undefined;
+
+  const projectedRatio =
+    requiredCredits > 0 ? projectedSatisfiedCredits / requiredCredits : 0;
+  const projectedPercent = Math.round(projectedRatio * 100);
+
+  return {
+    projectedCredits: projectedSatisfiedCredits,
+    projectedPercent,
+    markerRatio: Math.min(Math.max(projectedRatio, 0), 1),
+    text: `Proyectado si apruebas lo actual: ${projectedSatisfiedCredits}/${requiredCredits} (${projectedPercent}%)`,
+    ariaLabel: `Proyectado si apruebas lo actual: ${projectedSatisfiedCredits} de ${requiredCredits} créditos, ${projectedPercent}%`,
+  };
+}
+
+export interface CourseStateCounts {
+  completed: number;
+  available: number;
+  total: number;
+  text: string;
+}
+
+export function courseStateCounts(
+  states: ReadonlyMap<unknown, DerivedCourseState>,
+): CourseStateCounts {
+  let completed = 0;
+  let available = 0;
+
+  for (const state of states.values()) {
+    if (state === "COMPLETED") completed += 1;
+    if (state === "AVAILABLE") available += 1;
+  }
+
+  return {
+    completed,
+    available,
+    total: states.size,
+    text: `${completed} de ${states.size} materias aprobadas · ${available} disponibles ahora`,
+  };
 }
 
 export function satisfiedProgressBarArguments(

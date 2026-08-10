@@ -1,16 +1,20 @@
 import type {
   ComponentId,
   GroupingId,
+  VersionCourseId,
 } from "@sidera/curriculum-domain";
 import {
   calculateSatisfiedPlanProgress,
   type ComponentCreditProgress,
   type CreditProgress,
+  type DerivedCourseState,
 } from "@sidera/curriculum-engine";
 import { unalCs2024Official } from "@sidera/curriculum-snapshot";
 import { describe, expect, it } from "vitest";
 import {
+  courseStateCounts,
   evaluationContext,
+  planProgressProjection,
   progressBarPresentation,
   progressStageClass,
   satisfiedProgressBarArguments,
@@ -59,6 +63,104 @@ describe("satisfiedProgressBarArguments", () => {
       satisfiedProgressBarArguments(creditProgress(44, 44), 44)
         .inProgressCredits,
     ).toBe(0);
+  });
+});
+
+describe("planProgressProjection", () => {
+  it("presenta los créditos proyectados que entrega el motor", () => {
+    const progress = creditProgress(32, 36);
+
+    expect(progress.projectedSatisfiedCredits).toBeGreaterThanOrEqual(
+      progress.satisfiedCredits,
+    );
+    expect(
+      planProgressProjection({
+        satisfiedCredits: progress.satisfiedCredits,
+        projectedSatisfiedCredits: progress.projectedSatisfiedCredits,
+        requiredCredits: 44,
+      }),
+    ).toEqual({
+      projectedCredits: 36,
+      projectedPercent: 82,
+      markerRatio: 36 / 44,
+      text: "Proyectado si apruebas lo actual: 36/44 (82%)",
+      ariaLabel:
+        "Proyectado si apruebas lo actual: 36 de 44 créditos, 82%",
+    });
+  });
+
+  it("omite la proyección cuando no agrega créditos satisfechos", () => {
+    expect(
+      planProgressProjection({
+        satisfiedCredits: 40,
+        projectedSatisfiedCredits: 40,
+        requiredCredits: 44,
+      }),
+    ).toBeUndefined();
+  });
+
+  it("capa el marcador al 100% sin truncar el valor textual", () => {
+    const projection = planProgressProjection({
+      satisfiedCredits: 40,
+      projectedSatisfiedCredits: 48,
+      requiredCredits: 44,
+    });
+
+    expect(projection?.markerRatio).toBe(1);
+    expect(projection?.projectedCredits).toBe(48);
+    expect(projection?.text).toBe(
+      "Proyectado si apruebas lo actual: 48/44 (109%)",
+    );
+  });
+
+  it("no estima créditos de componentes sin agrupaciones", () => {
+    const progress = calculateSatisfiedPlanProgress(
+      evaluationContext,
+      { completedVersionCourseIds: [], inProgressVersionCourseIds: [] },
+      unalCs2024Official.planVersion.requiredCredits,
+    );
+    const unmodeled = progress.components.find(
+      (componentProgress) => componentProgress.groupings.length === 0,
+    );
+
+    expect(unmodeled?.satisfiedCredits).toBe(0);
+    expect(unmodeled?.projectedSatisfiedCredits).toBe(0);
+    expect(
+      planProgressProjection({
+        satisfiedCredits: unmodeled?.satisfiedCredits ?? 0,
+        projectedSatisfiedCredits:
+          unmodeled?.projectedSatisfiedCredits ?? 0,
+        requiredCredits: unmodeled?.requiredCredits ?? 0,
+      }),
+    ).toBeUndefined();
+  });
+});
+
+describe("courseStateCounts", () => {
+  it("cuenta estados y deriva el total del mapa", () => {
+    const states = new Map<VersionCourseId, DerivedCourseState>([
+      ["completed-a" as VersionCourseId, "COMPLETED"],
+      ["completed-b" as VersionCourseId, "COMPLETED"],
+      ["available" as VersionCourseId, "AVAILABLE"],
+      ["blocked" as VersionCourseId, "BLOCKED"],
+      ["in-progress" as VersionCourseId, "IN_PROGRESS"],
+    ]);
+
+    expect(courseStateCounts(states)).toEqual({
+      completed: 2,
+      available: 1,
+      total: states.size,
+      text: "2 de 5 materias aprobadas · 1 disponibles ahora",
+    });
+  });
+
+  it("representa un mapa vacío sin excepción", () => {
+    expect(courseStateCounts(new Map())).toEqual({
+      completed: 0,
+      available: 0,
+      total: 0,
+      text: "0 de 0 materias aprobadas · 0 disponibles ahora",
+    });
   });
 });
 

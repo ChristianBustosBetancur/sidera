@@ -19,9 +19,13 @@ import Link from "next/link";
 import { useMemo } from "react";
 import {
   blockingReasons,
+  courseStateCounts,
   coursesById,
   evaluationContext,
+  type CourseStateCounts,
+  type PlanProgressProjection,
   planVersionStatus,
+  planProgressProjection,
   progressBarPresentation,
   progressStageClass,
   requirementLines,
@@ -59,11 +63,15 @@ function ProgressBar({
   requiredCredits,
   completedRatio,
   inProgressCredits,
+  projection,
+  counts,
 }: {
   completedCredits: number;
   requiredCredits: number;
   completedRatio: number;
   inProgressCredits: number;
+  projection?: PlanProgressProjection;
+  counts?: CourseStateCounts;
 }) {
   const presentation = progressBarPresentation({
     completedCredits,
@@ -84,7 +92,11 @@ function ProgressBar({
       <div
         className={`${styles.progressTrack} ${stageClass}`}
         role="img"
-        aria-label={presentation.ariaLabel}
+        aria-label={
+          projection
+            ? `${presentation.ariaLabel}. ${projection.ariaLabel}`
+            : presentation.ariaLabel
+        }
       >
         <span
           className={styles.progressCompleted}
@@ -94,7 +106,18 @@ function ProgressBar({
           className={styles.progressInProgress}
           style={{ width: `${presentation.inProgressRatio * 100}%` }}
         />
+        {projection ? (
+          <span
+            className={styles.progressProjectionMarker}
+            style={{ left: `${projection.markerRatio * 100}%` }}
+            aria-hidden="true"
+          />
+        ) : null}
       </div>
+      {projection ? (
+        <p className={styles.progressProjection}>{projection.text}</p>
+      ) : null}
+      {counts ? <p className={styles.progressCounts}>{counts.text}</p> : null}
     </div>
   );
 }
@@ -319,6 +342,12 @@ export function CurriculumView() {
     [trajectory],
   );
   const unmodeledNote = unmodeledComponentsNote(progress.components);
+  const projection = planProgressProjection({
+    satisfiedCredits: progress.satisfiedCredits,
+    projectedSatisfiedCredits: progress.projectedSatisfiedCredits,
+    requiredCredits: progress.requiredCredits,
+  });
+  const counts = courseStateCounts(states);
 
   return (
     <main className={styles.page}>
@@ -338,6 +367,8 @@ export function CurriculumView() {
           <p id="progress-title">Progreso académico</p>
           <ProgressBar
             {...satisfiedProgressBarArguments(progress, progress.requiredCredits)}
+            projection={projection}
+            counts={counts}
           />
           {unmodeledNote ? (
             <p className={styles.unmodeledCreditsNote}>
