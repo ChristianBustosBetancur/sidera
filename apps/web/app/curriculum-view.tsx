@@ -373,7 +373,10 @@ export function CurriculumView() {
             {unalCs2024Official.versionCourses.length} materias incluidas en el
             dataset curado
           </p>
-          <Link href="/grafo">Ver grafo de prerrequisitos y correquisitos</Link>
+          <Link href="/grafo" className={styles.graphCta}>
+            Explorar grafo
+            <span aria-hidden="true">→</span>
+          </Link>
         </div>
       </div>
 
