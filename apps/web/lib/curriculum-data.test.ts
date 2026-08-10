@@ -95,7 +95,7 @@ describe("unmodeledComponentsNote", () => {
     expect(note).toEqual({
       credits: 29,
       names: ["Libre Elección"],
-      text: "29 créditos de Libre Elección aún no están modelados en Sidera.",
+      text: "29 créditos aún no modelados en Sidera (Libre Elección).",
     });
   });
 
@@ -122,7 +122,7 @@ describe("unmodeledComponentsNote", () => {
       "Componente C",
     ]);
     expect(note?.text).toBe(
-      "29 créditos de Componente A, Componente B y Componente C aún no están modelados en Sidera.",
+      "29 créditos aún no modelados en Sidera (Componente A, Componente B y Componente C).",
     );
   });
 
@@ -147,7 +147,7 @@ describe("unmodeledComponentsNote", () => {
     ).toEqual({
       credits: 29,
       names: ["Componente conocido", "el componente indicado"],
-      text: "29 créditos de Componente conocido y el componente indicado aún no están modelados en Sidera.",
+      text: "29 créditos aún no modelados en Sidera (Componente conocido y el componente indicado).",
     });
   });
 
@@ -169,7 +169,9 @@ describe("unmodeledComponentsNote", () => {
 
     expect(note?.credits).toBe(29);
     expect(note?.names).toEqual([expectedComponent?.name]);
-    expect(note?.text).toContain(`de ${expectedComponent?.name} aún no están modelados`);
+    expect(note?.text).toBe(
+      `29 créditos aún no modelados en Sidera (${expectedComponent?.name}).`,
+    );
   });
 });
 

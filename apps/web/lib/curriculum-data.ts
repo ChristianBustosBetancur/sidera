@@ -113,7 +113,7 @@ export function unmodeledComponentsNote(
   return {
     credits,
     names,
-    text: `${credits} créditos de ${namesText} aún no están modelados en Sidera.`,
+    text: `${credits} créditos aún no modelados en Sidera (${namesText}).`,
   };
 }
 
