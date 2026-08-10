@@ -42,7 +42,7 @@ Y a nivel componente: Fundamentación 61 = 53 obligatorios + 8 optativos; Discip
 
 1. **Tres magnitudes por alcance:**
    - `rawCredits`: créditos de materias `COMPLETED` que pertenecen al alcance. Sin tope.
-   - `satisfiedCredits`: créditos que satisfacen el requisito, respetando cupos. Siempre `≤ requiredCredits`.
+   - `satisfiedCredits`: créditos que satisfacen el requisito, respetando cupos. **A nivel agrupación** está acotado a `requiredCredits` por construcción. **A nivel componente y plan es una suma de sus hijos, nunca un valor recortado** — ver decisiones 4 y 4 bis.
    - `excessCredits`: `rawCredits − satisfiedCredits`. **Se conserva como información y no se reasigna a ningún otro alcance.**
 2. **Cálculo por agrupación:**
    ```
@@ -53,12 +53,27 @@ Y a nivel componente: Fundamentación 61 = 53 obligatorios + 8 optativos; Discip
    ```
    `créditosObligatoriosTotales` = suma de créditos de **todas** las materias `mandatory` de la agrupación presentes en el contexto.
 3. **Las optativas nunca sustituyen obligatorias.** Es consecuencia directa de la decisión 2: el término de optativas está acotado por `cupoOptativo` y no puede compensar obligatorias pendientes. Debe quedar explícito en el código y cubierto por tests.
-4. **Propagación estricta hacia arriba:**
+4. **Propagación estricta hacia arriba, sin clipping:**
    ```
-   satisfied(componente) = Σ satisfied(agrupaciones del componente)
-   satisfied(plan)       = Σ satisfied(componentes)
+   raw(padre)       = Σ raw(hijos)
+   satisfied(padre) = Σ satisfied(hijos)
+   excess(padre)    = raw(padre) − satisfied(padre)   [≡ Σ excess(hijos) por composición]
    ```
-   **Prohibido** recalcular el componente o el plan volviendo a sumar cursos crudos: eso es exactamente el bug que esta tarea corrige. `raw` y `excess` se agregan de la misma forma aditiva.
+   Aplica de agrupación → componente y de componente → plan.
+
+   **Prohibido** recalcular el componente o el plan volviendo a sumar cursos crudos: ese es el bug que esta tarea corrige.
+
+   **Prohibido igualmente aplicar `Math.min` (o cualquier otro tope) contra `component.requiredCredits` o `planVersion.requiredCredits`.** Capar en el padre ocultaría una inconsistencia estructural del dataset y rompería la aditividad de `excess`. La aditividad **manda**; ver decisión 4 bis.
+
+4 bis. **Jerarquía inconsistente → diagnóstico, nunca clipping.** El motor debe aceptar contextos donde `padre.requiredCredits` es menor que la agregación de sus hijos, porque `TASK-004.3` decisión 6 rechazó explícitamente validar esa consistencia entre niveles (quedó para `curriculum-validator`).
+
+   Cuando en componente o plan la agregación produzca una estructura incompatible con el `requiredCredits` del padre, se debe:
+   - **preservar el resultado aditivo** (decisión 4), y
+   - **emitir un diagnóstico estructurado** de inconsistencia jerárquica.
+
+   El diagnóstico debe permitir identificar al menos: el **alcance afectado** (componente o plan, con su id cuando aplique), el **`requiredCredits` del padre**, y la **agregación de los hijos** (o información equivalente que explique la inconsistencia).
+
+   Nombre conceptual de referencia: `INCONSISTENT_HIERARCHICAL_REQUIRED_CREDITS`. **El nombre no está fijado**: si la nomenclatura ya establecida en `types.ts` sugiere una forma mejor, se adopta esa, manteniendo el patrón existente de `code` + campos descriptivos.
 5. **Libre Elección no se infiere.** Un componente sin agrupaciones modeladas aporta `satisfied = 0`. **Prohibido** rellenarlo con excedentes de otros alcances o estimarlo de cualquier forma. Su `requiredCredits` sigue contando en el denominador del plan; la consecuencia (el plan solo puede representar 117 de 146 créditos satisfechos hoy) es correcta y esperada.
 6. **Proyección con `IN_PROGRESS` compartiendo cupo, no duplicándolo.** La proyección se calcula sobre la unión de completadas y en curso, con un único `min`:
    ```
@@ -105,7 +120,15 @@ Todos en `progress.test.ts`, con fixtures propios del test (no dependen del snap
 7. **Componente Fundamentación** — `satisfied` topa en `61`; el exceso de Matemáticas **no** lo infla.
 8. **Componente Disciplinar o Profesional** — `satisfied` topa en `56`.
 9. **El exceso de una agrupación no compensa el déficit de otra** (p. ej. exceso en Computación Aplicada con Algoritmos incompleto).
-10. **Invariantes**, comprobados en agrupación, componente y plan: `satisfied ≤ requiredCredits`; `satisfied ≤ raw`; `excess === raw − satisfied`.
+10. **Invariantes**, con el alcance corregido:
+    - **Agrupación** (siempre, garantizado por construcción): `satisfied ≤ requiredCredits`.
+    - **Agrupación, componente y plan** (siempre): `satisfied ≤ raw`; `excess === raw − satisfied`.
+    - **Componente y plan**: `satisfied ≤ requiredCredits` **solo cuando la jerarquía es consistente**. Es una consecuencia de datos válidos, **no** una operación de recorte. Con una jerarquía inconsistente el resultado aditivo se preserva y se emite el diagnóstico.
+    - **Aditividad**, comprobada explícitamente: `raw(padre) === Σ raw(hijos)`, `satisfied(padre) === Σ satisfied(hijos)`, `excess(padre) === Σ excess(hijos)`.
+
+10 bis. **Jerarquía inconsistente**: componente cuyo `requiredCredits` es menor que la agregación satisfecha de sus agrupaciones → se conserva el valor aditivo (**no** se recorta) y se emite el diagnóstico con alcance, `requiredCredits` del padre y agregación de los hijos. Igual caso a nivel plan.
+
+10 ter. **Dataset oficial sin diagnósticos**: con la jerarquía real (61 = 44+9+8; 56 = 19+16+6+7+8; 146 = 61+56+29) **no debe emitirse** ningún diagnóstico de inconsistencia jerárquica.
 11. **`IN_PROGRESS` comparte el cupo optativo restante con `COMPLETED`**: con el cupo ya consumido por completadas, una optativa en curso **no** incrementa la proyección de esa agrupación.
 12. **Libre Elección no se infiere**: componente sin agrupaciones → `satisfied = 0`, sin recibir excedentes de otros componentes.
 
@@ -118,7 +141,9 @@ Los **72 tests existentes deben seguir pasando sin modificarse**, salvo la actua
 1. Existe API nueva en `curriculum-engine` que expone `rawCredits`, `satisfiedCredits` y `excessCredits` por agrupación, componente y plan.
 2. El cupo optativo se deriva como `requiredCredits − créditosObligatoriosTotales`, acotado inferiormente a `0`.
 3. Las optativas completadas se acotan al cupo; nunca compensan obligatorias pendientes.
-4. Componente y plan derivan su `satisfied` de la agregación de sus hijos, sin volver a sumar cursos crudos.
+4. Componente y plan derivan `raw`, `satisfied` y `excess` de la agregación de sus hijos, sin volver a sumar cursos crudos y **sin aplicar ningún `Math.min` contra el `requiredCredits` del padre**.
+4 bis. Una jerarquía inconsistente preserva el resultado aditivo y emite un diagnóstico estructurado que identifica alcance, `requiredCredits` del padre y agregación de los hijos. Con el dataset oficial actual ese diagnóstico no se emite.
+4 ter. Se cumple la aditividad en las tres magnitudes: `raw`, `satisfied` y `excess` del padre son la suma de las de sus hijos.
 5. Un componente sin agrupaciones aporta `satisfied = 0` y no recibe excedentes.
 6. La proyección con `IN_PROGRESS` usa un único `min` sobre la unión con `COMPLETED`; no consume el cupo dos veces ni altera `satisfiedCredits`.
 7. `calculatePlanProgress` conserva firma y comportamiento; sus tests actuales pasan sin modificarse.
