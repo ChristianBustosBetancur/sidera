@@ -2,14 +2,14 @@ import type {
   Lifecycle,
   Provenance,
   RequirementExpression,
-  VersionCourse,
   VersionCourseId,
 } from "@sidera/curriculum-domain";
 import {
   collectBlockingEvaluations,
+  type ComponentCreditProgress,
+  type CreditProgress,
   type CurriculumEvaluationContext,
   type RequirementEvaluationNode,
-  type StudentTrajectory,
 } from "@sidera/curriculum-engine";
 import { unalCs2024Official } from "@sidera/curriculum-snapshot";
 
@@ -39,19 +39,6 @@ export const groupingsById = new Map(
   unalCs2024Official.groupings.map((grouping) => [grouping.id, grouping]),
 );
 
-export function sumInProgressCredits(
-  versionCourses: readonly VersionCourse[],
-  trajectory: StudentTrajectory,
-): number {
-  const inProgressVersionCourseIds = new Set(
-    trajectory.inProgressVersionCourseIds,
-  );
-
-  return versionCourses
-    .filter((versionCourse) => inProgressVersionCourseIds.has(versionCourse.id))
-    .reduce((total, versionCourse) => total + versionCourse.credits, 0);
-}
-
 export interface ProgressBarPresentation {
   completedPercent: number;
   completedRatio: number;
@@ -59,6 +46,52 @@ export interface ProgressBarPresentation {
   completedText: string;
   inProgressText?: string;
   ariaLabel: string;
+}
+
+export interface ProgressBarArguments {
+  completedCredits: number;
+  requiredCredits: number;
+  completedRatio: number;
+  inProgressCredits: number;
+}
+
+export function satisfiedProgressBarArguments(
+  progress: CreditProgress,
+  requiredCredits: number,
+): ProgressBarArguments {
+  return {
+    completedCredits: progress.satisfiedCredits,
+    requiredCredits,
+    completedRatio:
+      requiredCredits > 0 ? progress.satisfiedCredits / requiredCredits : 0,
+    inProgressCredits: Math.max(
+      progress.projectedSatisfiedCredits - progress.satisfiedCredits,
+      0,
+    ),
+  };
+}
+
+export type ProgressStage =
+  | "progressStageBlue"
+  | "progressStageCyan"
+  | "progressStageEmerald"
+  | "progressStageViolet"
+  | "progressStageMastered";
+
+export function progressStageClass(completedPercent: number): ProgressStage {
+  if (completedPercent >= 100) return "progressStageMastered";
+  if (completedPercent >= 75) return "progressStageViolet";
+  if (completedPercent >= 50) return "progressStageEmerald";
+  if (completedPercent >= 25) return "progressStageCyan";
+  return "progressStageBlue";
+}
+
+export function unmodeledComponentRequiredCredits(
+  components: readonly ComponentCreditProgress[],
+): number {
+  return components
+    .filter((component) => component.groupings.length === 0)
+    .reduce((total, component) => total + component.requiredCredits, 0);
 }
 
 export function progressBarPresentation({

@@ -7,9 +7,11 @@ import type {
   VersionCourseId,
 } from "@sidera/curriculum-domain";
 import {
-  calculatePlanProgress,
+  calculateSatisfiedPlanProgress,
+  type ComponentCreditProgress,
   deriveVersionCourseState,
   type DerivedCourseState,
+  type GroupingCreditProgress,
   type StudentTrajectory,
 } from "@sidera/curriculum-engine";
 import { unalCs2024Official } from "@sidera/curriculum-snapshot";
@@ -21,8 +23,10 @@ import {
   evaluationContext,
   planVersionStatus,
   progressBarPresentation,
+  progressStageClass,
   requirementLines,
-  sumInProgressCredits,
+  satisfiedProgressBarArguments,
+  unmodeledComponentRequiredCredits,
 } from "../lib/curriculum-data";
 import { type Mark, useTrajectory } from "../lib/trajectory";
 import styles from "./curriculum-view.module.css";
@@ -43,29 +47,12 @@ const versionCoursesByGroupingId = new Map(
     ),
   ]),
 );
-const versionCoursesByComponentId = new Map(
-  unalCs2024Official.components.map((component) => [
-    component.id,
-    (groupingsByComponentId.get(component.id) ?? []).flatMap(
-      (grouping) => versionCoursesByGroupingId.get(grouping.id) ?? [],
-    ),
-  ]),
-);
-
 const stateLabels: Record<DerivedCourseState, string> = {
   AVAILABLE: "Disponible",
   BLOCKED: "Bloqueada",
   COMPLETED: "Completada",
   IN_PROGRESS: "En curso",
 };
-
-function progressStageClass(completedPercent: number) {
-  if (completedPercent >= 100) return styles.progressStageMastered;
-  if (completedPercent >= 75) return styles.progressStageViolet;
-  if (completedPercent >= 50) return styles.progressStageEmerald;
-  if (completedPercent >= 25) return styles.progressStageCyan;
-  return styles.progressStageBlue;
-}
 
 function ProgressBar({
   completedCredits,
@@ -84,7 +71,7 @@ function ProgressBar({
     completedRatio,
     inProgressCredits,
   });
-  const stageClass = progressStageClass(presentation.completedPercent);
+  const stageClass = styles[progressStageClass(presentation.completedPercent)];
 
   return (
     <div className={styles.progressBar}>
@@ -223,21 +210,16 @@ function GroupingSection({
   versionCourses,
   states,
   trajectory,
+  progress,
   onMark,
 }: {
   grouping: Grouping;
   versionCourses: readonly VersionCourse[];
   states: ReadonlyMap<VersionCourseId, DerivedCourseState>;
   trajectory: StudentTrajectory;
+  progress: GroupingCreditProgress;
   onMark: (versionCourseId: VersionCourseId, mark: Mark) => void;
 }) {
-  const progress = calculatePlanProgress(
-    { ...evaluationContext, versionCourses },
-    trajectory,
-    grouping.requiredCredits,
-  );
-  const inProgressCredits = sumInProgressCredits(versionCourses, trajectory);
-
   return (
     <section className={styles.grouping} aria-labelledby={`grouping-${grouping.id}`}>
       <div className={styles.groupingHeading}>
@@ -245,10 +227,7 @@ function GroupingSection({
         <span>{grouping.requiredCredits} créditos requeridos</span>
       </div>
       <ProgressBar
-        completedCredits={progress.completedCredits}
-        requiredCredits={progress.requiredCredits}
-        completedRatio={progress.ratio}
-        inProgressCredits={inProgressCredits}
+        {...satisfiedProgressBarArguments(progress, progress.requiredCredits)}
       />
       <div className={styles.courseGrid}>
         {versionCourses.map((versionCourse) => (
@@ -269,25 +248,16 @@ function ComponentSection({
   component,
   states,
   trajectory,
+  progress,
   onMark,
 }: {
   component: Component;
   states: ReadonlyMap<VersionCourseId, DerivedCourseState>;
   trajectory: StudentTrajectory;
+  progress: ComponentCreditProgress;
   onMark: (versionCourseId: VersionCourseId, mark: Mark) => void;
 }) {
   const componentGroupings = groupingsByComponentId.get(component.id) ?? [];
-  const componentVersionCourses =
-    versionCoursesByComponentId.get(component.id) ?? [];
-  const progress = calculatePlanProgress(
-    { ...evaluationContext, versionCourses: componentVersionCourses },
-    trajectory,
-    component.requiredCredits,
-  );
-  const inProgressCredits = sumInProgressCredits(
-    componentVersionCourses,
-    trajectory,
-  );
 
   return (
     <section className={styles.component} aria-labelledby={`component-${component.id}`}>
@@ -299,10 +269,7 @@ function ComponentSection({
       {componentGroupings.length > 0 ? (
         <>
           <ProgressBar
-            completedCredits={progress.completedCredits}
-            requiredCredits={progress.requiredCredits}
-            completedRatio={progress.ratio}
-            inProgressCredits={inProgressCredits}
+            {...satisfiedProgressBarArguments(progress, progress.requiredCredits)}
           />
           {componentGroupings.map((grouping) => (
             <GroupingSection
@@ -311,6 +278,10 @@ function ComponentSection({
               versionCourses={versionCoursesByGroupingId.get(grouping.id) ?? []}
               states={states}
               trajectory={trajectory}
+              progress={progress.groupings.find(
+                (groupingProgress) =>
+                  groupingProgress.groupingId === grouping.id,
+              )!}
               onMark={onMark}
             />
           ))}
@@ -327,16 +298,15 @@ export function CurriculumView() {
 
   const progress = useMemo(
     () =>
-      calculatePlanProgress(
+      calculateSatisfiedPlanProgress(
         evaluationContext,
         trajectory,
         unalCs2024Official.planVersion.requiredCredits,
       ),
     [trajectory],
   );
-  const inProgressCredits = useMemo(
-    () => sumInProgressCredits(evaluationContext.versionCourses, trajectory),
-    [trajectory],
+  const unmodeledCredits = unmodeledComponentRequiredCredits(
+    progress.components,
   );
 
   return (
@@ -356,11 +326,14 @@ export function CurriculumView() {
         <section className={styles.progressCard} aria-labelledby="progress-title">
           <p id="progress-title">Progreso académico</p>
           <ProgressBar
-            completedCredits={progress.completedCredits}
-            requiredCredits={progress.requiredCredits}
-            completedRatio={progress.ratio}
-            inProgressCredits={inProgressCredits}
+            {...satisfiedProgressBarArguments(progress, progress.requiredCredits)}
           />
+          {unmodeledCredits > 0 ? (
+            <p className={styles.unmodeledCreditsNote}>
+              {unmodeledCredits} créditos de Libre Elección aún no están
+              modelados en Sidera.
+            </p>
+          ) : null}
         </section>
       </header>
 
@@ -390,6 +363,10 @@ export function CurriculumView() {
             component={component}
             states={states}
             trajectory={trajectory}
+            progress={progress.components.find(
+              (componentProgress) =>
+                componentProgress.componentId === component.id,
+            )!}
             onMark={markCourse}
           />
         ))}

@@ -51,6 +51,15 @@
   margin: 0;
 }
 
+.progressCard .unmodeledCreditsNote {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 500;
+  letter-spacing: normal;
+  line-height: 1.35;
+  text-transform: none;
+}
+
 .progressCard .progressText strong {
   font-size: 1.1rem;
 }
