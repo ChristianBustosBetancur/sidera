@@ -26,7 +26,7 @@ import {
   progressStageClass,
   requirementLines,
   satisfiedProgressBarArguments,
-  unmodeledComponentRequiredCredits,
+  unmodeledComponentsNote,
 } from "../lib/curriculum-data";
 import { type Mark, useTrajectory } from "../lib/trajectory";
 import styles from "./curriculum-view.module.css";
@@ -305,9 +305,7 @@ export function CurriculumView() {
       ),
     [trajectory],
   );
-  const unmodeledCredits = unmodeledComponentRequiredCredits(
-    progress.components,
-  );
+  const unmodeledNote = unmodeledComponentsNote(progress.components);
 
   return (
     <main className={styles.page}>
@@ -328,10 +326,9 @@ export function CurriculumView() {
           <ProgressBar
             {...satisfiedProgressBarArguments(progress, progress.requiredCredits)}
           />
-          {unmodeledCredits > 0 ? (
+          {unmodeledNote ? (
             <p className={styles.unmodeledCreditsNote}>
-              {unmodeledCredits} créditos de Libre Elección aún no están
-              modelados en Sidera.
+              {unmodeledNote.text}
             </p>
           ) : null}
         </section>

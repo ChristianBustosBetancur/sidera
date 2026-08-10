@@ -1,4 +1,5 @@
 import type {
+  ComponentId,
   Lifecycle,
   Provenance,
   RequirementExpression,
@@ -86,12 +87,34 @@ export function progressStageClass(completedPercent: number): ProgressStage {
   return "progressStageBlue";
 }
 
-export function unmodeledComponentRequiredCredits(
+export function unmodeledComponentsNote(
   components: readonly ComponentCreditProgress[],
-): number {
-  return components
-    .filter((component) => component.groupings.length === 0)
-    .reduce((total, component) => total + component.requiredCredits, 0);
+  componentName: (id: ComponentId) => string | undefined = (id) =>
+    componentsById.get(id)?.name,
+): { credits: number; names: string[]; text: string } | undefined {
+  const unmodeledComponents = components.filter(
+    (component) =>
+      component.groupings.length === 0 && component.requiredCredits > 0,
+  );
+  if (unmodeledComponents.length === 0) return undefined;
+
+  const credits = unmodeledComponents.reduce(
+    (total, component) => total + component.requiredCredits,
+    0,
+  );
+  const names = unmodeledComponents.map(
+    (component) => componentName(component.componentId) ?? "el componente indicado",
+  );
+  const namesText =
+    names.length === 1
+      ? names[0]
+      : `${names.slice(0, -1).join(", ")} y ${names.at(-1)}`;
+
+  return {
+    credits,
+    names,
+    text: `${credits} créditos de ${namesText} aún no están modelados en Sidera.`,
+  };
 }
 
 export function progressBarPresentation({

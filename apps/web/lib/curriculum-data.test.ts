@@ -14,7 +14,7 @@ import {
   progressBarPresentation,
   progressStageClass,
   satisfiedProgressBarArguments,
-  unmodeledComponentRequiredCredits,
+  unmodeledComponentsNote,
 } from "./curriculum-data";
 
 const groupingId = "grouping" as GroupingId;
@@ -69,41 +69,107 @@ describe("progressStageClass", () => {
   });
 });
 
-describe("unmodeledComponentRequiredCredits", () => {
-  it("suma únicamente componentes sin agrupaciones modeladas", () => {
-    const component = (
-      id: string,
-      requiredCredits: number,
-      groupings: ComponentCreditProgress["groupings"],
-    ): ComponentCreditProgress => ({
-      componentId: id as ComponentId,
-      requiredCredits,
-      groupings,
-      ...creditProgress(0, 0),
-    });
-    const modeledGrouping = {
-      groupingId,
-      requiredCredits: 10,
-      ...creditProgress(0, 0),
-    };
+const component = (
+  id: string,
+  requiredCredits: number,
+  groupings: ComponentCreditProgress["groupings"],
+): ComponentCreditProgress => ({
+  componentId: id as ComponentId,
+  requiredCredits,
+  groupings,
+  ...creditProgress(0, 0),
+});
+const modeledGrouping = {
+  groupingId,
+  requiredCredits: 10,
+  ...creditProgress(0, 0),
+};
 
-    expect(
-      unmodeledComponentRequiredCredits([
-        component("modeled", 10, [modeledGrouping]),
-        component("unmodeled-a", 20, []),
-        component("unmodeled-b", 9, []),
-      ]),
-    ).toBe(29);
+describe("unmodeledComponentsNote", () => {
+  it("describe un componente sin modelar con su nombre", () => {
+    const note = unmodeledComponentsNote(
+      [component("free-choice", 29, [])],
+      () => "Libre Elección",
+    );
+
+    expect(note).toEqual({
+      credits: 29,
+      names: ["Libre Elección"],
+      text: "29 créditos de Libre Elección aún no están modelados en Sidera.",
+    });
   });
 
-  it("deriva 29 créditos del dataset oficial", () => {
+  it("lista todos los nombres y suma sus créditos", () => {
+    const names = new Map([
+      ["unmodeled-a", "Componente A"],
+      ["unmodeled-b", "Componente B"],
+      ["unmodeled-c", "Componente C"],
+    ]);
+    const note = unmodeledComponentsNote(
+      [
+        component("modeled", 10, [modeledGrouping]),
+        component("unmodeled-a", 10, []),
+        component("unmodeled-b", 12, []),
+        component("unmodeled-c", 7, []),
+      ],
+      (id) => names.get(id),
+    );
+
+    expect(note?.credits).toBe(29);
+    expect(note?.names).toEqual([
+      "Componente A",
+      "Componente B",
+      "Componente C",
+    ]);
+    expect(note?.text).toBe(
+      "29 créditos de Componente A, Componente B y Componente C aún no están modelados en Sidera.",
+    );
+  });
+
+  it("no genera nota cuando todos los componentes tienen agrupaciones", () => {
+    expect(
+      unmodeledComponentsNote([component("modeled", 10, [modeledGrouping])]),
+    ).toBeUndefined();
+  });
+
+  it("ignora componentes sin agrupaciones que no exigen créditos", () => {
+    expect(
+      unmodeledComponentsNote([component("empty", 0, [])]),
+    ).toBeUndefined();
+  });
+
+  it("conserva los créditos y usa un descriptor neutro si falta el nombre", () => {
+    expect(
+      unmodeledComponentsNote(
+        [component("known", 20, []), component("unknown", 9, [])],
+        (id) => (id === ("known" as ComponentId) ? "Componente conocido" : undefined),
+      ),
+    ).toEqual({
+      credits: 29,
+      names: ["Componente conocido", "el componente indicado"],
+      text: "29 créditos de Componente conocido y el componente indicado aún no están modelados en Sidera.",
+    });
+  });
+
+  it("deriva los créditos y el nombre del dataset oficial", () => {
     const progress = calculateSatisfiedPlanProgress(
       evaluationContext,
       { completedVersionCourseIds: [], inProgressVersionCourseIds: [] },
       unalCs2024Official.planVersion.requiredCredits,
     );
 
-    expect(unmodeledComponentRequiredCredits(progress.components)).toBe(29);
+    const expectedComponent = unalCs2024Official.components.find(
+      (component) =>
+        component.requiredCredits > 0 &&
+        !unalCs2024Official.groupings.some(
+          (grouping) => grouping.componentId === component.id,
+        ),
+    );
+    const note = unmodeledComponentsNote(progress.components);
+
+    expect(note?.credits).toBe(29);
+    expect(note?.names).toEqual([expectedComponent?.name]);
+    expect(note?.text).toContain(`de ${expectedComponent?.name} aún no están modelados`);
   });
 });
 
