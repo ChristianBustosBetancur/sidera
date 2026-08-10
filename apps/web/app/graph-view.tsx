@@ -171,7 +171,7 @@ export function GraphView() {
       : [];
 
   useEffect(() => {
-    if (selectedId) detailPanelRef.current?.focus();
+    if (selectedId) detailPanelRef.current?.focus({ preventScroll: true });
   }, [selectedId]);
 
   const measureEdges = useCallback(() => {

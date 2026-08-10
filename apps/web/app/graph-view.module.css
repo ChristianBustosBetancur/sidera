@@ -474,6 +474,21 @@
   margin-bottom: 0;
 }
 
+@media (max-width: 72rem) {
+  .detailPanel {
+    position: fixed;
+    z-index: 20;
+    inset: auto 0 0;
+    max-height: 55vh;
+    overflow-y: auto;
+  }
+
+  .detailHeader button,
+  .actions button {
+    min-height: 2.75rem;
+  }
+}
+
 @media (min-width: 72.001rem) {
   .graphWorkspace {
     position: relative;
@@ -519,12 +534,25 @@
   }
 
   .columns {
-    gap: 3.5rem;
+    gap: 2.25rem;
   }
 
   .levelColumn {
-    width: 15rem;
-    flex-basis: 15rem;
+    width: 11.5rem;
+    flex-basis: 11.5rem;
+  }
+
+  .canvas {
+    padding: 0.75rem;
+  }
+
+  .nodes {
+    gap: 0.75rem;
+  }
+
+  .courseCard {
+    min-height: 5rem;
+    padding: 0.6rem;
   }
 }
 
