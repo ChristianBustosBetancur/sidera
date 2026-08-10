@@ -287,7 +287,20 @@ function ComponentSection({
           ))}
         </>
       ) : (
-        <p className={styles.emptyGrouping}>Este componente no contiene agrupaciones de materias en el dataset.</p>
+        <div className={styles.unavailableProgress}>
+          <div
+            className={styles.unavailableProgressTrack}
+            role="img"
+            aria-label="Progreso no disponible: sin materias modeladas en Sidera"
+          />
+          <span className={styles.unavailableProgressBadge}>
+            Aún no modelado en Sidera
+          </span>
+          <p className={styles.unavailableProgressExplanation}>
+            Sidera todavía no tiene materias modeladas para este componente, por lo que su
+            progreso no puede calcularse.
+          </p>
+        </div>
       )}
     </section>
   );
