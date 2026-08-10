@@ -35,8 +35,18 @@ import {
   hasExceededDragThreshold,
   shouldSuppressClick,
 } from "../lib/pointer-gestures";
+// PROBE: temporary development-only selection scroll instrumentation.
+import {
+  probePostFocus,
+  probeSelection,
+  SelectionScrollProbe,
+} from "../lib/selection-scroll-probe";
 import { type Mark, useTrajectory } from "../lib/trajectory";
 import styles from "./graph-view.module.css";
+
+// PROBE: constante estática; en producción Next.js la resuelve a false y elimina
+// todas sus ramas, dejando la sonda fuera del bundle en vez de solo inerte.
+const PROBE_ENABLED = process.env.NODE_ENV !== "production";
 
 type Point = { x: number; y: number };
 type EdgePosition = CourseEdge & { start: Point; end: Point };
@@ -172,6 +182,8 @@ export function GraphView() {
 
   useEffect(() => {
     if (selectedId) detailPanelRef.current?.focus({ preventScroll: true });
+    // PROBE: sample immediately after the existing detail-panel focus.
+    if (PROBE_ENABLED && selectedId) probePostFocus();
   }, [selectedId]);
 
   const measureEdges = useCallback(() => {
@@ -426,13 +438,23 @@ export function GraphView() {
                             nodeRefs.current.delete(versionCourse.id);
                           }
                         }}
-                        onSelect={() =>
-                          setSelectedId((current) =>
-                            current === versionCourse.id
-                              ? null
-                              : versionCourse.id,
-                          )
-                        }
+                        onSelect={() => {
+                          const applySelection = () =>
+                            setSelectedId((current) =>
+                              current === versionCourse.id
+                                ? null
+                                : versionCourse.id,
+                            );
+                          // PROBE: wrap the existing selection update with read-only samples.
+                          if (PROBE_ENABLED) {
+                            probeSelection(
+                              nodeRefs.current.get(versionCourse.id) ?? null,
+                              applySelection,
+                            );
+                            return;
+                          }
+                          applySelection();
+                        }}
                       />
                     ))}
                   </div>
@@ -547,6 +569,13 @@ export function GraphView() {
           </aside>
         ) : null}
       </div>
+      {/* PROBE: non-interactive development-only diagnostic overlay. */}
+      {PROBE_ENABLED ? (
+        <SelectionScrollProbe
+          graphRegionRef={graphRegionRef}
+          detailPanelRef={detailPanelRef}
+        />
+      ) : null}
     </main>
   );
 }
