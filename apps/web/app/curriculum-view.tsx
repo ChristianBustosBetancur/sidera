@@ -59,6 +59,14 @@ const stateLabels: Record<DerivedCourseState, string> = {
   IN_PROGRESS: "En curso",
 };
 
+function progressStageClass(completedPercent: number) {
+  if (completedPercent >= 100) return styles.progressStageMastered;
+  if (completedPercent >= 75) return styles.progressStageViolet;
+  if (completedPercent >= 50) return styles.progressStageEmerald;
+  if (completedPercent >= 25) return styles.progressStageCyan;
+  return styles.progressStageBlue;
+}
+
 function ProgressBar({
   completedCredits,
   requiredCredits,
@@ -76,6 +84,7 @@ function ProgressBar({
     completedRatio,
     inProgressCredits,
   });
+  const stageClass = progressStageClass(presentation.completedPercent);
 
   return (
     <div className={styles.progressBar}>
@@ -86,7 +95,7 @@ function ProgressBar({
         ) : null}
       </div>
       <div
-        className={styles.progressTrack}
+        className={`${styles.progressTrack} ${stageClass}`}
         role="img"
         aria-label={presentation.ariaLabel}
       >
