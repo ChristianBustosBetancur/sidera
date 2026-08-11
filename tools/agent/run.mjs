@@ -16,6 +16,32 @@ const REVIEW_SYSTEM_PROMPT =
   "Eres un reviewer no interactivo. Usa unicamente la evidencia recibida por stdin. No leas archivos, no ejecutes comandos y no uses herramientas. Emite unicamente el contrato de veredicto requerido: un bloque JSON cercado con verdict, blockers y nonBlocking.";
 const VALIDATIONS = ["lint", "typecheck", "test", "build"];
 const TERMINAL = ["HUMAN_GATE", "STOPPED"];
+const REVIEWERS = {
+  "claude-review": {
+    promptFile: "40-review-prompt.md",
+    outputFile: "41-review-output.md",
+    verdictFile: "42-verdict.json",
+    contract: '{"verdict":"PASS|FAIL","blockers":[{"file":"ruta","issue":"problema"}],"nonBlocking":[]}',
+    instructions: "",
+  },
+  "codex-qa": {
+    promptFile: "50-qa-prompt.md",
+    outputFile: "51-qa-output.md",
+    verdictFile: "52-qa-verdict.json",
+    contract: '{"verdict":"PASS|FAIL","blockers":[{"file":"ruta","issue":"problema"}],"risks":[],"missingTests":[]}',
+    instructions:
+      "Busca errores, casos borde, regresiones y pruebas faltantes. Puedes leer archivos del repositorio, pero no ejecutes git, no uses red, MCP, busqueda web ni credenciales.",
+  },
+  "codex-data-audit": {
+    promptFile: "60-data-audit-prompt.md",
+    outputFile: "61-data-audit-output.md",
+    verdictFile: "62-data-audit-verdict.json",
+    contract:
+      '{"verdict":"PASS|FAIL","blockers":[{"file":"ruta","issue":"problema"}],"sourceMismatches":[],"inventedFields":[],"unresolvedReferences":[],"provenanceIssues":[]}',
+    instructions:
+      "Audita la fidelidad de los datos contra sus documentos fuente. Puedes leer archivos del repositorio, pero no ejecutes git, no uses red, MCP, busqueda web ni credenciales.",
+  },
+};
 
 const argv = process.argv.slice(2);
 const flag = (name, fallback) => {
@@ -129,6 +155,21 @@ function formatPorcelainEntries(entries) {
     .join("\n");
 }
 
+function requiredReviewers() {
+  const taskFile = join(runDir, "00-task.md");
+  if (!existsSync(taskFile)) return ["claude-review"];
+  const match = readFileSync(taskFile, "utf8").match(/```reviewers\s*\r?\n([\s\S]*?)```/);
+  const declared = match ? match[1].split(/\r?\n/).map((id) => id.trim()).filter(Boolean) : [];
+  return [...new Set(["claude-review", ...declared])];
+}
+
+function taskValidations() {
+  const taskFile = join(runDir, "00-task.md");
+  if (!existsSync(taskFile)) return [];
+  const match = readFileSync(taskFile, "utf8").match(/```validations\s*\r?\n([\s\S]*?)```/);
+  return match ? match[1].split(/\r?\n/).map((command) => command.trim()).filter(Boolean) : [];
+}
+
 function killTree(pid) {
   try {
     if (process.platform === "win32") execFileSync("taskkill", ["/PID", String(pid), "/T", "/F"], { stdio: "ignore" });
@@ -195,15 +236,23 @@ async function implement(attemptDir, attempt, blockers) {
 
 async function validate(attemptDir) {
   const results = [];
-  for (const step of VALIDATIONS) {
+  const validations = [
+    ...VALIDATIONS.map((step) => ({ step, source: "standard", command: "pnpm", args: [step], useShell: true })),
+    ...taskValidations().map((command) => {
+      const [program, ...args] = command.split(/\s+/);
+      return { step: command, source: "task", command: program, args, useShell: false };
+    }),
+  ];
+  for (const validation of validations) {
+    const { step, source, command, args, useShell } = validation;
     const injected = opts.injectValidateFailure === step;
     const r = injected
       ? await run(`pnpm ${step} [SYNTHETIC FAILURE]`, process.execPath, [
           "-e",
           `console.error("SYNTHETIC VALIDATION FAILURE injected for step ${step}"); process.exit(1)`,
         ])
-      : await run(`pnpm ${step}`, "pnpm", [step], { useShell: true });
-    results.push({ step, ok: r.ok, exitCode: r.code, synthetic: injected });
+      : await run(source === "standard" ? `pnpm ${step}` : step, command, args, { useShell });
+    results.push({ step, source, ok: r.ok, exitCode: r.code, synthetic: injected });
     appendFileSync(join(attemptDir, "21-validate.log"), `\n===== ${step} (exit ${r.code}) =====\n${r.out}`);
     if (!r.ok) {
       writeFileSync(join(attemptDir, "20-validate.json"), `${JSON.stringify(results, null, 2)}\n`);
@@ -253,7 +302,7 @@ function buildReviewSnapshot() {
   return { patch: `${parts.join("\n")}\n`, status, changedCount: entries.length, untrackedCount: untrackedPaths.length };
 }
 
-async function review(attemptDir, validateResults) {
+async function review(attemptDir, validateResults, reviewers) {
   const snap = buildReviewSnapshot();
   const diff = snap.patch;
   const status = snap.status;
@@ -263,34 +312,57 @@ async function review(attemptDir, validateResults) {
   say("FILES", `${files} archivo(s) con cambios (${snap.untrackedCount} nuevo(s), contenido incluido en el patch)`);
   event("worktree", { changedFiles: files, untrackedFiles: snap.untrackedCount });
   const task = readFileSync(join(runDir, "00-task.md"), "utf8");
-  const prompt = `# REVIEW\n\n## TASK\n\n${task}\n\n## diff\n\n\`\`\`diff\n${diff}\`\`\`\n\n## status\n\n\`\`\`\n${status}\n\`\`\`\n\n## VALIDATE\n\n\`\`\`json\n${JSON.stringify(validateResults, null, 2)}\n\`\`\`\n\n## attempt\n\n${state.attempt}/${MAX_ATTEMPTS}\n\nTermina con un bloque JSON cercado que cumpla este contrato:\n\n\`\`\`json\n{"verdict":"PASS|FAIL","blockers":[{"file":"ruta","issue":"problema"}],"nonBlocking":[]}\n\`\`\`\n`;
-  writeFileSync(join(attemptDir, "40-review-prompt.md"), prompt);
-  const outFile = join(attemptDir, "41-review-output.md");
-  const result = opts.simulated
-    ? await run("stub:review [SIMULATED]", process.execPath, [
-        join(REPO, "tools", "agent", "stubs", "review.mjs"),
-        `--verdict=${opts.review}`,
-        `--task=${taskId}`,
-        `--out=${outFile}`,
-      ])
-    : await run(
-        "claude",
-        "claude",
-        ["-p", "--safe-mode", "--system-prompt", REVIEW_SYSTEM_PROMPT, "--tools", ""],
-        { input: prompt, outputFile: outFile },
-      );
-  if (!result.ok) return null;
-  const raw = readFileSync(outFile, "utf8");
-  const blocks = [...raw.matchAll(/```json\s*\n([\s\S]*?)```/g)];
-  if (blocks.length === 0) return null;
-  try {
-    const parsed = JSON.parse(blocks[blocks.length - 1][1]);
-    if (parsed.verdict !== "PASS" && parsed.verdict !== "FAIL") return null;
-    writeFileSync(join(attemptDir, "42-verdict.json"), `${JSON.stringify(parsed, null, 2)}\n`);
-    return parsed;
-  } catch {
-    return null;
+  const verdicts = [];
+  for (const reviewer of Object.keys(REVIEWERS)) {
+    if (!reviewers.includes(reviewer)) {
+      say("REVIEW", `${reviewer} SKIPPED`);
+      event("reviewer:skipped", { reviewer, attempt: state.attempt });
+      continue;
+    }
+    const config = REVIEWERS[reviewer];
+    const prompt = `# REVIEW\n\n## TASK\n\n${task}\n\n## diff\n\n\`\`\`diff\n${diff}\`\`\`\n\n## status\n\n\`\`\`\n${status}\n\`\`\`\n\n## VALIDATE\n\n\`\`\`json\n${JSON.stringify(validateResults, null, 2)}\n\`\`\`\n\n## attempt\n\n${state.attempt}/${MAX_ATTEMPTS}\n\n${config.instructions ? `${config.instructions}\n\n` : ""}Termina con un bloque JSON cercado que cumpla este contrato:\n\n\`\`\`json\n${config.contract}\n\`\`\`\n`;
+    writeFileSync(join(attemptDir, config.promptFile), prompt);
+    const outFile = join(attemptDir, config.outputFile);
+    say("REVIEW", `${reviewer} START`);
+    event("reviewer:start", { reviewer, attempt: state.attempt });
+    const result = opts.simulated
+      ? await run(`stub:review ${reviewer} [SIMULATED]`, process.execPath, [
+          join(REPO, "tools", "agent", "stubs", "review.mjs"),
+          `--verdict=${opts.review}`,
+          `--task=${taskId}`,
+          `--out=${outFile}`,
+        ])
+      : reviewer === "claude-review"
+        ? await run(
+            "claude",
+            "claude",
+            ["-p", "--safe-mode", "--system-prompt", REVIEW_SYSTEM_PROMPT, "--tools", ""],
+            { input: prompt, outputFile: outFile },
+          )
+        : await run(
+            reviewer,
+            "codex",
+            ["exec", "--sandbox", "read-only", "--ephemeral", "--ignore-user-config", "--ignore-rules", "-"],
+            { input: prompt, outputFile: outFile },
+          );
+    say("REVIEW", `${reviewer} END (${result.ok ? "PASS" : "FAIL"} proceso)`);
+    event("reviewer:end", { reviewer, attempt: state.attempt, exitCode: result.code, result: result.ok ? "PASS" : "FAIL" });
+    if (!result.ok) return { reviewer, verdict: null };
+    const raw = readFileSync(outFile, "utf8");
+    const blocks = [...raw.matchAll(/```json\s*\n([\s\S]*?)```/g)];
+    let parsed = null;
+    try {
+      if (blocks.length > 0) parsed = JSON.parse(blocks[blocks.length - 1][1]);
+    } catch {
+      /* veredicto no parseable */
+    }
+    if (parsed?.verdict !== "PASS" && parsed?.verdict !== "FAIL") return { reviewer, verdict: null };
+    writeFileSync(join(attemptDir, config.verdictFile), `${JSON.stringify(parsed, null, 2)}\n`);
+    say("REVIEW", `${reviewer} VERDICT ${parsed.verdict}`);
+    event("reviewer:verdict", { reviewer, attempt: state.attempt, verdict: parsed.verdict });
+    verdicts.push({ ...parsed, reviewer });
   }
+  return verdicts;
 }
 
 // ---------- terminales ----------
@@ -399,6 +471,12 @@ async function main() {
 ──────────────────────────────────────────────────────────────`);
   event("run:start", { task: taskId, branch, mode: state.mode });
 
+  const reviewers = requiredReviewers();
+  const unknownReviewer = reviewers.find((reviewer) => !REVIEWERS[reviewer]);
+  if (unknownReviewer) stop("unknown-reviewer", { reviewer: unknownReviewer });
+  event("reviewers:selected", { reviewers });
+  say("REVIEW", `requeridos: ${reviewers.join(", ")}`);
+
   const heartbeat = setInterval(() => {
     if (state?.activeProcess) say("···", `activo: ${state.activeProcess}  |  fase ${state.phase}`);
   }, 5000);
@@ -420,22 +498,29 @@ async function main() {
     if (!v.ok) {
       say("BLOCKER", `validacion '${v.failedStep}' fallo — REVIEW no se ejecuta`);
       event("validate:failed", { failedStep: v.failedStep, reviewSkipped: true });
-      blockers = `# Blockers de validacion (attempt ${attempt})\n\nLa validacion \`pnpm ${v.failedStep}\` fallo.\n\n\`\`\`\n${v.output.slice(-4000)}\n\`\`\`\n`;
+      blockers = `# Blockers de validacion (attempt ${attempt})\n\nLa validacion \`${v.failedStep}\` fallo.\n\n\`\`\`\n${v.output.slice(-4000)}\n\`\`\`\n`;
       if (attempt === MAX_ATTEMPTS) stop("repair-budget-exhausted", { lastFailure: v.failedStep });
       continue;
     }
 
     setPhase("REVIEW");
-    const verdict = await review(attemptDir, v.results);
-    if (!verdict) stop("unparseable-verdict");
-    if (verdict.verdict === "PASS") humanGate();
+    const verdicts = await review(attemptDir, v.results, reviewers);
+    if (!Array.isArray(verdicts)) stop("unparseable-verdict", { reviewer: verdicts.reviewer });
+    const failed = verdicts.filter((verdict) => verdict.verdict === "FAIL");
+    const aggregate = failed.length === 0 ? "PASS" : "FAIL";
+    say("GATE", `REVIEW agregado ${aggregate}`);
+    event("review:aggregate", { verdict: aggregate, reviewers: verdicts.map(({ reviewer, verdict }) => ({ reviewer, verdict })) });
+    if (aggregate === "PASS") humanGate();
 
-    const list = verdict.blockers ?? [];
-    if (list.length === 0) stop("empty-blockers");
-    say("BLOCKER", `REVIEW FAIL con ${list.length} blocker(s)`);
-    event("review:fail", { blockers: list.length });
+    const empty = failed.find((verdict) => (verdict.blockers ?? []).length === 0);
+    if (empty) stop("empty-blockers", { reviewer: empty.reviewer });
+    const list = failed.flatMap((verdict) =>
+      (verdict.blockers ?? []).map((blocker) => ({ reviewer: verdict.reviewer, ...blocker })),
+    );
+    say("BLOCKER", `REVIEW FAIL con ${list.length} blocker(s) de ${failed.length} reviewer(s)`);
+    event("review:fail", { blockers: list.length, reviewers: failed.map(({ reviewer }) => reviewer) });
     state.lastVerdict = "FAIL";
-    blockers = `# Blockers de REVIEW (attempt ${attempt})\n\n${list.map((b, i) => `${i + 1}. \`${b.file ?? "-"}\` — ${b.issue ?? ""}`).join("\n")}\n`;
+    blockers = `# Blockers de REVIEW (attempt ${attempt})\n\n${list.map((b, i) => `${i + 1}. [${b.reviewer}] \`${b.file ?? "-"}\` — ${b.issue ?? ""}`).join("\n")}\n`;
     if (attempt === MAX_ATTEMPTS) stop("repair-budget-exhausted", { lastVerdict: "FAIL" });
   }
 }

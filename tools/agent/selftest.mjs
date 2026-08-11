@@ -146,6 +146,108 @@ try {
   check("regresion staged", patch.includes("STAGED_MARKER"));
   check("el index staged permanece intacto", git(["diff", "--cached"]).includes("STAGED_MARKER"));
 
+  console.log("\n== Reviewers por defecto ==");
+  check("claude-review conserva artefacto 40", existsSync(join(attempt, "40-review-prompt.md")));
+  check("claude-review conserva artefacto 41", existsSync(join(attempt, "41-review-output.md")));
+  check("claude-review conserva artefacto 42", existsSync(join(attempt, "42-verdict.json")));
+  check(
+    "codex-qa no crea artefactos",
+    !readdirSync(attempt).some((name) => name.startsWith("50-") || name.startsWith("51-") || name.startsWith("52-")),
+  );
+  check(
+    "codex-data-audit no crea artefactos",
+    !readdirSync(attempt).some((name) => name.startsWith("60-") || name.startsWith("61-") || name.startsWith("62-")),
+  );
+
+  console.log("\n== Validaciones adicionales ==");
+  const defaultValidations = JSON.parse(readFileSync(join(attempt, "20-validate.json"), "utf8"));
+  check("sin bloque ejecuta exactamente cuatro validaciones", defaultValidations.length === 4);
+  check(
+    "las cuatro validaciones por defecto son las estandar en orden",
+    defaultValidations.every((entry, index) => entry.step === ["lint", "typecheck", "test", "build"][index] && entry.source === "standard"),
+  );
+
+  writeFileSync(
+    join(FIXTURE, "docs", "tasks", `${TASK}.md`),
+    `# ${TASK}\n\n\`\`\`validations\n  node -e process.exit(0)  \n\`\`\`\n`,
+  );
+  const extraPass = runner([TASK, "--simulated", "--review=pass", "--reset", "--implement-delay=0"]);
+  check("validacion adicional exitosa continua a REVIEW", extraPass.status === 0, `exit ${extraPass.status}`);
+  const passAttempt = join(latestRunDir(), "attempt-1");
+  const passValidations = JSON.parse(readFileSync(join(passAttempt, "20-validate.json"), "utf8"));
+  check(
+    "validacion adicional queda en la evidencia marcada como task",
+    passValidations.length === 5 && passValidations[4].step === "node -e process.exit(0)" && passValidations[4].source === "task" && passValidations[4].ok,
+  );
+  check("run exitoso creo artefacto de REVIEW", existsSync(join(passAttempt, "40-review-prompt.md")));
+  check(
+    "validacion adicional llega al prompt de REVIEW",
+    readFileSync(join(passAttempt, "40-review-prompt.md"), "utf8").includes('"source": "task"'),
+  );
+  check(
+    "validacion adicional queda en el log compartido",
+    readFileSync(join(passAttempt, "21-validate.log"), "utf8").includes("===== node -e process.exit(0) (exit 0) ====="),
+  );
+  const passEvents = readFileSync(join(latestRunDir(), "events.jsonl"), "utf8")
+    .trim()
+    .split("\n")
+    .map((line) => JSON.parse(line));
+  check(
+    "validacion adicional registra inicio y fin en events",
+    passEvents.some((entry) => entry.type === "command:start" && entry.label === "node -e process.exit(0)") &&
+      passEvents.some(
+        (entry) =>
+          entry.type === "command:end" &&
+          entry.label === "node -e process.exit(0)" &&
+          entry.exitCode === 0 &&
+          entry.result === "PASS",
+      ),
+  );
+
+  writeFileSync(
+    join(FIXTURE, "docs", "tasks", `${TASK}.md`),
+    `# ${TASK}\n\n\`\`\`validations\nnode -e process.exit(1)\n\`\`\`\n`,
+  );
+  const extraFail = runner([TASK, "--simulated", "--review=pass", "--reset", "--implement-delay=0"]);
+  check("validacion adicional fallida detiene el run", extraFail.status === 1, `exit ${extraFail.status}`);
+  const failRun = latestRunDir();
+  const failAttempt = join(failRun, "attempt-1");
+  const failValidations = JSON.parse(readFileSync(join(failAttempt, "20-validate.json"), "utf8"));
+  check(
+    "fallo adicional queda en la evidencia marcada como task",
+    failValidations.at(-1)?.step === "node -e process.exit(1)" && failValidations.at(-1)?.source === "task" && !failValidations.at(-1)?.ok,
+  );
+  check("fallo adicional impide REVIEW", !existsSync(join(failAttempt, "40-review-prompt.md")));
+  check(
+    "fallo adicional alimenta la reparacion",
+    readFileSync(join(failRun, "attempt-2", "05-blockers.md"), "utf8").includes("node -e process.exit(1)"),
+  );
+  writeFileSync(join(FIXTURE, "docs", "tasks", `${TASK}.md`), `# ${TASK}\n`);
+
+  console.log("\n== Reviewer desconocido ==");
+  writeFileSync(join(FIXTURE, "docs", "tasks", `${TASK}.md`), `# ${TASK}\n\n\`\`\`reviewers\nreviewer-inexistente\n\`\`\`\n`);
+  const unknown = runner([TASK, "--simulated", "--review=pass", "--reset", "--implement-delay=0"]);
+  check("runner se detiene ante reviewer desconocido", unknown.status === 1, `exit ${unknown.status}`);
+  const unknownState = JSON.parse(readFileSync(STATE, "utf8"));
+  check("unknown phase = STOPPED", unknownState.phase === "STOPPED", `phase=${unknownState.phase}`);
+  check(
+    "unknown stopReason = unknown-reviewer",
+    unknownState.stopReason === "unknown-reviewer",
+    `stopReason=${unknownState.stopReason}`,
+  );
+  const unknownEvents = readFileSync(join(latestRunDir(), "events.jsonl"), "utf8")
+    .trim()
+    .split("\n")
+    .map((line) => JSON.parse(line));
+  check(
+    "evento identifica reviewer desconocido",
+    unknownEvents.some(
+      (entry) =>
+        entry.type === "stopped" && entry.reason === "unknown-reviewer" && entry.reviewer === "reviewer-inexistente",
+    ),
+  );
+  writeFileSync(join(FIXTURE, "docs", "tasks", `${TASK}.md`), `# ${TASK}\n`);
+
   console.log("\n== Untracked desaparecido entre status y diff ==");
   const missing = runner([
     TASK,

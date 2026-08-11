@@ -4,12 +4,22 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   resolve: {
     alias: {
+      "@sidera/curriculum-engine": fileURLToPath(
+        new URL("./packages/curriculum-engine/src/index.ts", import.meta.url),
+      ),
       "@sidera/curriculum-schema": fileURLToPath(
         new URL("./packages/curriculum-schema/src/index.ts", import.meta.url),
+      ),
+      "@sidera/curriculum-snapshot": fileURLToPath(
+        new URL("./packages/curriculum-snapshot/src/index.ts", import.meta.url),
       ),
     },
   },
   test: {
-    include: ["tests/**/*.test.ts", "packages/**/src/**/*.test.ts"],
+    include: [
+      "tests/**/*.test.ts",
+      "packages/**/src/**/*.test.ts",
+      "apps/web/lib/**/*.test.ts",
+    ],
   },
 });
