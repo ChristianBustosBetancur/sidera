@@ -97,6 +97,101 @@
   border-top-color: #8a5b22;
 }
 
+.groupingLegend,
+.groupingLegendMobile {
+  flex: 1 1 16rem;
+  min-width: 16rem;
+}
+
+.groupingLegend {
+  display: none;
+}
+
+.groupingLegendLabel {
+  margin: 0 0 0.6rem;
+  color: var(--ink);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.groupingLegendMobile summary {
+  color: var(--ink);
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.groupingList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.1rem;
+  margin-top: 0.6rem;
+}
+
+.groupingList span {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--ink);
+  font-size: 0.82rem;
+}
+
+.groupingSwatch {
+  display: inline-block;
+  flex: none;
+  width: 1.1rem;
+  height: 0.35rem;
+  border-radius: 0.15rem;
+}
+
+.groupingSwatch[data-grouping="unal-cs-2024-mathematics"] {
+  background: #2f6aa3;
+}
+
+.groupingSwatch[data-grouping="unal-cs-2024-programming"] {
+  background: #9c7a17;
+}
+
+.groupingSwatch[data-grouping="unal-cs-2024-natural-sciences-statistics"] {
+  background: #a83c74;
+}
+
+.groupingSwatch[data-grouping="unal-cs-2024-algorithms-computing"] {
+  background: #2e2566;
+}
+
+.groupingSwatch[data-grouping="unal-cs-2024-scientific-computing"] {
+  background: #9d5fc2;
+}
+
+.groupingSwatch[data-grouping="unal-cs-2024-computer-systems"] {
+  background: #226e77;
+}
+
+.groupingSwatch[data-grouping="unal-cs-2024-applied-computing"] {
+  background: #b34a1a;
+}
+
+.groupingSwatch[data-grouping="unal-cs-2024-degree-work"] {
+  background: #6b2430;
+}
+
+@media (min-width: 47.001rem) {
+  /* Dos presentaciones separadas en vez de forzar <details> cerrado a
+     mostrar contenido por CSS: ese mecanismo depende de cómo cada motor
+     de render gestiona internamente el colapso nativo y no es fiable
+     entre navegadores. Aquí, en vez, se alterna con `display` entre un
+     bloque estático (desktop/tablet) y el <details> (móvil, definido
+     como estilo base más abajo) — sin JavaScript, sin estado nuevo. */
+  .groupingLegend {
+    display: block;
+  }
+
+  .groupingLegendMobile {
+    display: none;
+  }
+}
+
 .graphError {
   margin-bottom: 1rem;
   padding: 1rem;
@@ -258,7 +353,6 @@
   color: #16181a;
   background: #ffffff;
   border: 1px solid #d5d8d6;
-  border-left: 5px solid #8a8f8c;
   border-radius: 0.55rem;
   box-shadow: none;
   transition: opacity 120ms ease, box-shadow 160ms ease;
@@ -351,35 +445,43 @@
 }
 
 .courseCard[data-grouping="unal-cs-2024-mathematics"] {
-  border-left-color: #5c6a78;
+  border-top-width: 4px;
+  border-top-color: #2f6aa3;
 }
 
 .courseCard[data-grouping="unal-cs-2024-programming"] {
-  border-left-color: #7a5c26;
+  border-top-width: 4px;
+  border-top-color: #9c7a17;
 }
 
 .courseCard[data-grouping="unal-cs-2024-natural-sciences-statistics"] {
-  border-left-color: #77516a;
+  border-top-width: 4px;
+  border-top-color: #a83c74;
 }
 
 .courseCard[data-grouping="unal-cs-2024-algorithms-computing"] {
-  border-left-color: #375f79;
+  border-top-width: 4px;
+  border-top-color: #2e2566;
 }
 
 .courseCard[data-grouping="unal-cs-2024-scientific-computing"] {
-  border-left-color: #63578c;
+  border-top-width: 4px;
+  border-top-color: #9d5fc2;
 }
 
 .courseCard[data-grouping="unal-cs-2024-computer-systems"] {
-  border-left-color: #3f6771;
+  border-top-width: 4px;
+  border-top-color: #226e77;
 }
 
 .courseCard[data-grouping="unal-cs-2024-applied-computing"] {
-  border-left-color: #7a5240;
+  border-top-width: 4px;
+  border-top-color: #b34a1a;
 }
 
 .courseCard[data-grouping="unal-cs-2024-degree-work"] {
-  border-left-color: #5a5f63;
+  border-top-width: 4px;
+  border-top-color: #6b2430;
 }
 
 .selected {
@@ -659,6 +761,10 @@
     flex-wrap: wrap;
   }
 
+  .groupingLegendMobile {
+    min-width: 0;
+  }
+
   .columns {
     gap: 2.25rem;
   }
@@ -679,6 +785,10 @@
   .courseCard {
     min-height: 5rem;
     padding: 0.6rem;
+  }
+
+  .courseCard[data-grouping] {
+    border-top-width: 3px;
   }
 }
 

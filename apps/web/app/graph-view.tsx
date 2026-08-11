@@ -61,6 +61,19 @@ const stateLabels: Record<DerivedCourseState, string> = {
   IN_PROGRESS: "En curso",
 };
 
+function GroupingLegendItems() {
+  return (
+    <>
+      {unalCs2024Official.groupings.map((grouping) => (
+        <span key={grouping.id}>
+          <i className={styles.groupingSwatch} data-grouping={grouping.id} />
+          {grouping.name}
+        </span>
+      ))}
+    </>
+  );
+}
+
 function GraphCourseCard({
   versionCourse,
   state,
@@ -315,6 +328,18 @@ export function GraphView() {
           <span><i className={styles.solidLine} /> Prerrequisito</span>
           <span><i className={styles.dashedLine} /> Correquisito</span>
         </div>
+        <div className={styles.groupingLegend}>
+          <p className={styles.groupingLegendLabel}>Agrupaciones curriculares</p>
+          <div className={styles.groupingList}>
+            <GroupingLegendItems />
+          </div>
+        </div>
+        <details className={styles.groupingLegendMobile}>
+          <summary>Agrupaciones curriculares</summary>
+          <div className={styles.groupingList}>
+            <GroupingLegendItems />
+          </div>
+        </details>
         <p>
           Selecciona una materia para destacar sus relaciones directas. Vuelve a
           seleccionarla para limpiar el foco.
