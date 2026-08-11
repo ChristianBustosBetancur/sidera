@@ -36,15 +36,49 @@ Todo el comportamiento funcional: SVG nativo sin librerías; niveles topológico
 
 - Piel del nodo: de tarjeta de formulario a nodo con identidad de estado más fuerte (candado en bloqueada, contorno marcado en disponible, relleno de progreso en curso, marca de completada) — con CSS puro, sin iconos externos ni imágenes.
 - Conexiones: mismo SVG, trazo con más carácter de "camino" (grosor/color), sin animación continua.
-- Agrupamiento visual por **rama temática** dentro de cada columna de nivel (ver §5), que hoy no existe — actualmente todas las materias del mismo nivel se listan sin distinción de agrupación.
+- Identidad visual de **rama temática** en el nodo (ver §5), que hoy no existe — actualmente todas las materias del mismo nivel se muestran sin distinción de agrupación. Es acento de color, **no** reordenamiento del layout.
 
 ### 4. Propuesta de layout
 
-Se conserva el eje horizontal = nivel de grafo (columnas, scroll horizontal). Se añade un agrupamiento vertical **dentro** de cada columna por agrupación curricular (carril/franja de color por `grouping`), de modo que el ojo pueda seguir una "rama" (p. ej. Matemáticas) a través de los niveles sin necesitar una topología nueva ni recalcular nada. Es una capa de presentación sobre datos que el motor ya expone.
+> **Corrección de una propuesta anterior de este mismo documento.** La primera redacción de §4/§5 proponía carriles físicos por agrupación dentro de cada columna de nivel. Al medir el dataset real esa propuesta quedó **descartada**: los datos la contradicen (evidencia en §5). Se registra aquí en vez de reescribirla en silencio.
+
+Se conserva el eje horizontal = nivel de grafo (columnas, scroll horizontal), **sin partición geométrica adicional**. Las agrupaciones curriculares **no** se convierten en carriles, franjas ni filas: se expresan como **identidad visual del nodo** (acento de color e indicador contenido), de modo que el ojo pueda seguir una rama a través de los niveles por color, sin imponerle una geometría que sus dependencias reales no respetan.
+
+La agrupación es **guía visual, no regla estructural**.
 
 ### 5. Ramas temáticas — sin inventar información curricular
 
-Las ramas son exactamente las agrupaciones (`grouping`) ya definidas en el dominio/dataset — las 8 del Acuerdo 0018 (Matemáticas, Programación, Ciencias Naturales y Estadística, Algoritmos y Computación, Computación Científica, Sistemas de Cómputo, Computación Aplicada, Trabajo de Grado). No se inventan categorías nuevas, no se recategoriza ninguna materia por criterio propio. Una materia sin agrupación conocida se muestra explícitamente como "sin rama", igual que el resto del producto ya representa referencias no resueltas — nunca se le asigna una por inferencia.
+Las ramas son exactamente las agrupaciones (`grouping`) ya definidas en el dominio/dataset — las 8 del Acuerdo 0018 (Matemáticas, Programación, Ciencias Naturales y Estadística, Algoritmos y Computación, Computación Científica, Sistemas de Cómputo, Computación Aplicada, Trabajo de Grado). No se inventan categorías nuevas, no se recategoriza ninguna materia por criterio propio. En el dataset actual **las 60 materias tienen agrupación** (0 sin asignar); aun así, una materia sin agrupación conocida debe mostrarse explícitamente como "sin rama" — nunca se le asigna una por inferencia.
+
+#### Evidencia medida sobre el dataset oficial (`unalCs2024Official`)
+
+Medido ejecutando `buildCurriculumGraph` sobre el snapshot real, no estimado:
+
+- **60 nodos**, **73 edges**, **0 ciclos**, **0 materias sin agrupación**.
+- **27 edges intra-rama (37%)** frente a **46 edges que cruzan agrupaciones (63%)**.
+- Los cruces dominantes salen de un proveedor transversal: Matemáticas → Computación Científica (13), Matemáticas → Algoritmos y Computación (9), Matemáticas → Ciencias Naturales y Estadística (4), Ciencias Naturales y Estadística → Computación Aplicada (4), Matemáticas → Computación Aplicada (4).
+- **Desequilibrio fuerte de tamaños**, de 16:1:
+
+  | Rama | Nodos | Niveles que abarca |
+  |---|---|---|
+  | Matemáticas | 16 | 0–3 |
+  | Computación Aplicada | 12 | 1–5 |
+  | Algoritmos y Computación | 9 | 0–4 |
+  | Computación Científica | 8 | 2–4 |
+  | Ciencias Naturales y Estadística | 6 | 0–3 |
+  | Sistemas de Cómputo | 5 | 3–4 |
+  | Programación | 3 | 0–2 |
+  | Trabajo de Grado | 1 | 0 |
+
+- La matriz nivel × rama es **dispersa: 25 celdas ocupadas de 48 posibles**, 9 de ellas con una sola materia.
+
+**Por qué esto descarta los carriles**: con el 63% de las relaciones cruzando agrupaciones, unos carriles por rama obligarían a la mayoría de las aristas a atravesar carriles ajenos, y la dispersión de la matriz dejaría huecos verticales en más de la mitad de las celdas. El resultado sería más ruido visual, no menos — lo contrario del objetivo. Matemáticas se comporta como proveedor transversal del plan, no como rama paralela, y Trabajo de Grado es un nodo aislado en nivel 0 (su gate es `MIN_COMPONENT_CREDITS`, que `curriculum-graph.ts` no traduce a edges).
+
+#### Paleta: jerarquía estado > agrupación
+
+**La señal visual primaria es el estado** (bloqueada / disponible / en curso / completada). La agrupación es **secundaria** y debe expresarse de forma contenida: borde o acento lateral, indicador pequeño, tono discreto. Está descartado usar 8 colores fuertes compitiendo entre sí — con 8 ramas el riesgo de paleta ilegible es real.
+
+Los valores hex definitivos **no se fijan en este documento**: requieren validación de contraste. Lo que sí queda fijado es la jerarquía **estado > agrupación**, que TASK-008.1 debe respetar al proponer la paleta concreta.
 
 ### 6. Bloqueada / disponible / en curso / completada
 
@@ -64,7 +98,7 @@ No se rediseña en esta fase. Sigue floating en desktop / bottom sheet en tácti
 
 ### 10. Progreso visual de ramas
 
-Cada carril de rama puede mostrar un indicador corto de progreso (satisfecho/requerido) **reutilizando** `calculateSatisfiedPlanProgress` de `curriculum-engine` — el mismo dato que ya consume la Vista Plan para las barras EXP. Sin cálculo nuevo, sin tocar el motor.
+Descartados los carriles (§4), el progreso por rama ya no tiene un contenedor visual propio en el canvas. Sigue siendo deseable — reutilizando `calculateSatisfiedPlanProgress` de `curriculum-engine`, el mismo dato que ya alimenta las barras EXP de la Vista Plan, sin cálculo nuevo ni cambios en el motor — pero necesita un anfitrión visual (leyenda de ramas, panel lateral o cabecera) que **no está decidido**. Queda como mejora posterior, explícitamente fuera de TASK-008.1.
 
 ### 11. Profundidad ligera
 
@@ -88,15 +122,19 @@ Se extiende el bloque `@media (prefers-reduced-motion: reduce)` ya existente en 
 
 ### 16. Cómo evitar caos con ~60 materias
 
-Se mantiene el mecanismo que ya funciona con el dataset real: columnas por nivel + scroll horizontal + modo foco para atenuar lo no relacionado. El agrupamiento por rama (§4) reduce ruido percibido sin cambiar la densidad real de nodos. Colapsar/plegar ramas no relevantes es una mejora futura razonable, explícitamente **no** incluida en la primera implementación acotada.
+Se mantiene el mecanismo que ya funciona con el dataset real: columnas por nivel + scroll horizontal + modo foco para atenuar lo no relacionado. La jerarquía visual de estados (§3) es lo que reduce el ruido percibido: con "disponible" como único estado de contorno vivo, la pregunta operativa —qué puedo cursar ahora— se responde sin recorrer los 60 nodos. El acento de rama (§5) añade una segunda pista de lectura sin cambiar la densidad real. Filtrar o resaltar por rama, y colapsar ramas no relevantes, son mejoras futuras razonables, explícitamente **no** incluidas en la primera implementación acotada.
 
 ### 17. SVG vs. HTML/CSS vs. híbrido
 
 Se conserva el híbrido actual: nodos en HTML/CSS (accesibilidad nativa de botones y foco de teclado) + SVG solo para las líneas de conexión. No se migra a SVG puro (perdería accesibilidad de los controles) ni a Canvas/WebGL (contradice las restricciones de esta fase y no aporta nada que el híbrido actual no resuelva).
 
-### 18. Primera implementación acotada posterior (propuesta, no iniciada)
+### 18. Primera implementación acotada posterior — `TASK-008.1`
 
-`TASK-008.1`, con el mismo patrón que TASK-006.4.1: alcance limitado a `apps/web/app/graph-view.module.css` (y, si es imprescindible para exponer `grouping` por nodo o el progreso por rama, cambios mínimos y explícitamente acotados en `graph-view.tsx` — nunca en `curriculum-graph.ts`, `packages/**` ni el dataset). Contenido: re-piel de `.courseCard` hacia estética de nodo de estado (candado/contorno/relleno/check), agrupamiento visual por rama dentro de cada columna, indicador de progreso por rama reutilizando el motor existente. Fuera de esa TASK: panel de detalle, modo foco, drag/scroll, dataset, motor, Vista Plan.
+Redactada en `docs/tasks/TASK-008.1.md`. Forma acordada: **JSX mínimo + CSS**.
+
+`groupingId` **no está hoy en el DOM** — `GraphCourseCard` renderiza código, nombre, créditos, obligatoria/electiva y estado, nunca la agrupación. Por eso una implementación estrictamente solo-CSS no puede expresar la identidad de rama de §5: ningún selector alcanza un dato ausente del marcado. El cambio de JSX se limita a **exponer `groupingId` como `data-grouping`** en el nodo; todo lo demás es CSS.
+
+Contenido: re-piel de `.courseCard` con jerarquía clara de los cuatro estados, acento secundario por agrupación, y peso diferenciado de las aristas según relevancia. Fuera de esa TASK: panel de detalle, modo foco, drag/scroll, flechas/markers SVG, filtros por rama, progreso por rama, dataset, motor, Vista Plan.
 
 ## Restricciones de esta fase (aplican también a TASK-008.1 y siguientes)
 
