@@ -14,9 +14,11 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
     <html lang="es">
       <body>
         <TrajectoryProvider>{children}</TrajectoryProvider>
-        <aside className={styles.previewBadge}>
-          <span aria-hidden="true">🚧</span> Sidera Preview · En desarrollo
-        </aside>
+        {process.env.VERCEL_ENV !== "production" ? (
+          <aside className={styles.previewBadge}>
+            <span aria-hidden="true">🚧</span> Sidera Preview · En desarrollo
+          </aside>
+        ) : null}
       </body>
     </html>
   );
