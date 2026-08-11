@@ -226,16 +226,18 @@
 .prerequisiteEdge,
 .corequisiteEdge {
   fill: none;
-  stroke: #52796a;
-  stroke-width: 2;
-  opacity: 0.7;
+  stroke: #3f6e5a;
+  stroke-width: 2.25;
+  opacity: 0.78;
   vector-effect: non-scaling-stroke;
   transition: opacity 120ms ease;
 }
 
 .corequisiteEdge {
-  stroke: #8a5b22;
+  stroke: #82551f;
+  stroke-width: 2;
   stroke-dasharray: 7 5;
+  opacity: 0.72;
 }
 
 .edgeDimmed {
@@ -253,28 +255,131 @@
   min-height: 6.5rem;
   flex-direction: column;
   padding: 0.8rem;
+  color: #16181a;
   background: #ffffff;
-  border: 1px solid #cbd2cc;
-  border-left: 5px solid #89938c;
+  border: 1px solid #d5d8d6;
+  border-left: 5px solid #8a8f8c;
   border-radius: 0.55rem;
-  box-shadow: 0 1px 2px rgb(23 33 27 / 10%);
-  transition: opacity 120ms ease, box-shadow 120ms ease;
+  box-shadow: none;
+  transition: opacity 120ms ease, box-shadow 160ms ease;
 }
 
-.available {
-  border-left-color: #24714f;
-}
-
-.in_progress {
-  border-left-color: #286ca8;
-}
-
-.completed {
-  border-left-color: #5b3a8d;
+.courseCard::after {
+  position: absolute;
+  top: 0.62rem;
+  right: 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 900;
+  line-height: 1;
+  pointer-events: none;
 }
 
 .blocked {
-  background: #f7f7f4;
+  color: #33383a;
+  background: #eceeed;
+  border-color: #c9cbca;
+}
+
+/* Candado dibujado con CSS: monocromo y determinista en cualquier plataforma.
+   Deliberadamente NO se usa el emoji U+1F512, que muchos sistemas renderizan
+   a color con su fuente de emoji e ignoran la propiedad `color`.
+   Ambos pseudo-elementos son `position: absolute`, así que no alteran el flujo
+   de la tarjeta y no invalidan las medidas de `measureEdges`. */
+.blocked::before,
+.blocked::after {
+  position: absolute;
+  content: "";
+  pointer-events: none;
+}
+
+/* Cuerpo del candado. */
+.blocked::after {
+  top: 0.66rem;
+  right: 0.65rem;
+  width: 0.6rem;
+  height: 0.48rem;
+  background: #52565a;
+  border-radius: 0.09rem;
+}
+
+/* Arco del candado. */
+.blocked::before {
+  top: 0.44rem;
+  right: 0.78rem;
+  width: 0.34rem;
+  height: 0.24rem;
+  border: 0.09rem solid #52565a;
+  border-bottom: 0;
+  border-radius: 0.2rem 0.2rem 0 0;
+}
+
+.available {
+  color: #14161a;
+  background: #ffffff;
+  border-color: #17704c;
+  outline: 3px solid #17704c;
+  outline-offset: 1px;
+  box-shadow: 0 2px 6px rgb(23 112 76 / 16%);
+}
+
+.in_progress {
+  color: #14181c;
+  background: linear-gradient(90deg, #e6eef4 0 16%, #ffffff 16% 100%);
+  border-color: #4d7089;
+}
+
+.in_progress .code::before {
+  content: "";
+  display: inline-block;
+  width: 0.48rem;
+  height: 0.48rem;
+  margin-right: 0.35rem;
+  background: #245f86;
+  border-radius: 50%;
+}
+
+.completed {
+  color: #1e231f;
+  background: #eef4f0;
+  border-color: #a9b7ae;
+}
+
+.completed::after {
+  content: "\2713";
+  color: #3a7a57;
+  font-size: 1rem;
+}
+
+.courseCard[data-grouping="unal-cs-2024-mathematics"] {
+  border-left-color: #5c6a78;
+}
+
+.courseCard[data-grouping="unal-cs-2024-programming"] {
+  border-left-color: #7a5c26;
+}
+
+.courseCard[data-grouping="unal-cs-2024-natural-sciences-statistics"] {
+  border-left-color: #77516a;
+}
+
+.courseCard[data-grouping="unal-cs-2024-algorithms-computing"] {
+  border-left-color: #375f79;
+}
+
+.courseCard[data-grouping="unal-cs-2024-scientific-computing"] {
+  border-left-color: #63578c;
+}
+
+.courseCard[data-grouping="unal-cs-2024-computer-systems"] {
+  border-left-color: #3f6771;
+}
+
+.courseCard[data-grouping="unal-cs-2024-applied-computing"] {
+  border-left-color: #7a5240;
+}
+
+.courseCard[data-grouping="unal-cs-2024-degree-work"] {
+  border-left-color: #5a5f63;
 }
 
 .selected {
@@ -289,7 +394,7 @@
   display: grid;
   gap: 0.25rem;
   padding: 0;
-  color: var(--ink);
+  color: inherit;
   text-align: left;
   background: transparent;
   border: 0;
@@ -302,7 +407,7 @@
 }
 
 .code {
-  color: var(--muted);
+  color: #41474a;
   font-size: 0.75rem;
   font-weight: 800;
   letter-spacing: 0.04em;
@@ -313,29 +418,49 @@
   flex-wrap: wrap;
   gap: 0.3rem;
   margin-top: 0.6rem;
-  color: var(--muted);
+  color: #41474a;
   font-size: 0.72rem;
 }
 
 .facts > span {
   padding: 0.16rem 0.38rem;
-  background: #edf0ed;
+  background: #eef0ef;
   border-radius: 99rem;
 }
 
 .stateBadge[data-state="AVAILABLE"] {
-  color: #174f38;
-  background: #dcece4;
+  color: #12472f;
+  background: #d5eadf;
 }
 
 .stateBadge[data-state="IN_PROGRESS"] {
-  color: #164c7c;
-  background: #dceaf6;
+  color: #173f5c;
+  background: #d2e3ef;
 }
 
 .stateBadge[data-state="COMPLETED"] {
-  color: #4f317d;
-  background: #e9e0f4;
+  color: #294f39;
+  background: #d4e5da;
+}
+
+.stateBadge[data-state="BLOCKED"] {
+  color: #36423a;
+  background: #d8ddd9;
+}
+
+.blocked .code,
+.blocked .facts {
+  color: #474c49;
+}
+
+.in_progress .code,
+.in_progress .facts {
+  color: #2c343b;
+}
+
+.completed .code,
+.completed .facts {
+  color: #38443d;
 }
 
 .requirements {

@@ -81,6 +81,7 @@ function GraphCourseCard({
   return (
     <article
       ref={setNodeRef}
+      data-grouping={versionCourse.groupingId}
       className={`${styles.courseCard} ${styles[state.toLowerCase()]} ${selected ? styles.selected : ""} ${dimmed ? styles.dimmed : ""}`}
       onClick={onSelect}
       aria-current={selected ? "true" : undefined}
