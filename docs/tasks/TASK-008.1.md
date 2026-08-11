@@ -41,7 +41,9 @@ UI interactiva con estado, grafo y rendimiento → fila "UI interactiva o comple
 3. **Los hex definitivos se proponen en esta TASK, no vienen dados.** Deben cumplir los criterios de contraste de la sección correspondiente. Si Codex encuentra que un color propuesto no alcanza el contraste exigido, lo ajusta y lo documenta en su resumen — no lo deja fallando.
 
 4. **Los cuatro estados, con esta intención visual:**
-   - **Bloqueada** — fondo apagado, texto en gris medio, contorno tenue, candado pequeño mediante pseudo-elemento con glifo (sin imagen, sin icono externo). Inerte pero legible.
+   - **Bloqueada** — fondo apagado, texto en gris medio, contorno tenue, candado pequeño mediante pseudo-elemento (sin imagen, sin icono externo, sin dependencia). Inerte pero legible.
+
+     **Prohibido usar el emoji U+1F512 (🔒) o cualquier otro carácter de la zona emoji.** Muchas plataformas lo renderizan a color con la fuente de emoji del sistema, ignorando la propiedad `color`, con apariencia distinta en cada dispositivo — no es determinista ni monocromo. El candado debe dibujarse con CSS (cajas y bordes en pseudo-elementos) o, en su defecto, con un carácter tipográfico simple que respete `color` y la fuente. Se admite SVG inline solo si CSS resulta insuficiente, y sin añadir dependencias.
    - **Disponible** — **el único estado con contorno vivo**: contorno marcado en color de acento y, como mucho, un `box-shadow` de una sola capa y radio corto. Es el ancla de atención de toda la vista.
    - **En curso** — insinuación de progreso parcial mediante franja lateral o `linear-gradient` de dos paradas, más un marcador junto al código. **Estático**: no representa avance real ni se anima.
    - **Completada** — fondo teñido suave, texto un punto atenuado, marca de verificación mediante pseudo-elemento. Deliberadamente menos protagonista que "disponible".
@@ -101,19 +103,26 @@ Cualquier necesidad de tocar `apps/web/lib/curriculum-graph.ts`, `packages/**`, 
 ### Desktop (`>72rem`)
 
 10. El panel de detalle conserva posición, ancho, `max-height`, fondo, borde, sombra y `z-index` exactamente como están hoy.
-11. `.dimmed` conserva `opacity: 0.1` en desktop.
+11. `.dimmed` conserva `opacity: 0.1` en desktop, **sin ninguna regla posterior que lo anule** (ver criterio 13 bis).
 12. El pan por arrastre (mouse/pen) y el botón "Volver al inicio" funcionan igual que antes.
 
 ### Contraste y legibilidad
 
-13. Todo el texto de los nodos cumple **contraste ≥ 4.5:1** contra su fondo, **en los cuatro estados**, incluido "bloqueada" y incluido el estado atenuado del modo foco en táctil (`opacity: 0.35`).
-14. Los indicadores no textuales (contorno de disponible, acento de rama) cumplen **≥ 3:1** contra lo adyacente.
+13. Todo el texto de los nodos cumple **contraste ≥ 4.5:1** contra su fondo **en estado normal (no atenuado)**, en los cuatro estados, incluido "bloqueada".
+
+13 bis. **El contenido atenuado por el modo foco queda excluido del umbral 4.5:1 mientras está atenuado.** La atenuación (`.dimmed`) es un estado **temporal y secundario**, activo solo mientras el usuario mantiene una materia seleccionada, y reversible por las tres salidas del modo foco. Reducir el contraste es su propósito explícito: apartar lo no relacionado. Exigirle 4.5:1 sería contradictorio con conservarla, porque con `opacity: 0.35` ese umbral es inalcanzable incluso con negro puro sobre blanco.
+
+   En consecuencia queda **prohibido** neutralizar la atenuación para satisfacer un umbral de contraste — en particular, prohibido cualquier `opacity: 1` sobre `.dimmed` (`.courseCard.dimmed` incluido) en cualquier breakpoint.
+
+   **Contrapartida obligatoria**: la atenuación **nunca puede ser el único portador de una información**. Todo lo que un nodo comunica (código, nombre, créditos, estado, rama) debe seguir estando disponible sin depender de la atenuación, y debe recuperar su contraste pleno al salir del modo foco. El modo foco resalta una relación; no oculta datos ni sustituye a ninguna otra señal.
+
+14. Los indicadores no textuales (contorno de disponible, acento de rama) cumplen **≥ 3:1** contra lo adyacente, evaluados igualmente **en estado no atenuado**.
 15. Ningún estado se distingue **solo** por color: cada uno tiene además una diferencia de forma, contorno, glifo o peso tipográfico.
 16. Con los 60 nodos del dataset real, la vista sigue siendo legible: sin colisiones de texto, sin truncamientos nuevos, sin desbordes.
 
 ### Móvil / táctil (`≤72rem` y `≤47rem`)
 
-17. Se conserva el bottom sheet con `max-height: 45vh` y `.dimmed` con `opacity: 0.35`.
+17. Se conserva el bottom sheet con `max-height: 45vh` y `.dimmed` con `opacity: 0.35`, **sin ninguna regla posterior que lo anule** (ver criterio 13 bis).
 18. Se conservan los anchos de columna y el tamaño compacto de tarjeta de `≤47rem` sin desbordes ni recortes.
 19. Las áreas táctiles conservan su altura mínima actual (`2.75rem` donde ya aplica).
 20. Cero cambios en el scroll táctil nativo, en el pan, y en el comportamiento de foco.
