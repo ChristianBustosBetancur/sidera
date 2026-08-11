@@ -2,7 +2,15 @@
 
 ## Naturaleza de esta TASK
 
-Especificación de implementación, autoría de Claude en su rol de UX/arquitecto frontend (`CLAUDE.md`). No modifica `docs/tasks/TASK-009.1.md` ni `docs/tasks/TASK-009.1.1.md` — ambos quedan como **evidencia histórica** de iteraciones que pasaron todas sus validaciones técnicas y llegaron a `HUMAN_GATE`, pero fueron rechazadas en revisión visual humana.
+**TASK de implementación de código de producto.** El entregable de esta TASK es el diff de implementación de `/explorar` en `apps/web/**`, no un documento. Este archivo es la especificación contra la cual debe evaluarse ese diff.
+
+Reutiliza la infraestructura de `/explorar` ya existente en el working tree (ruta, vista, estilos, helper de layout, tests, selección, estados, panel de detalle, BFS de relevancia, SVG+HTML, navegación) — **no parte de cero y no la descarta**; reemplaza el mecanismo de layout y la composición visual sobre esa base.
+
+El run termina en `HUMAN_GATE` para revisión visual humana. El runner no hace commit, push, merge ni deploy; nada de eso ocurre automáticamente al pasar las validaciones.
+
+**Instrucción para el reviewer**: evaluar el diff de implementación contra los criterios de aceptación de este documento. La presencia de código de producto en el diff es lo esperado, no una violación de alcance.
+
+No modifica `docs/tasks/TASK-009.1.md` ni `docs/tasks/TASK-009.1.1.md` — ambos quedan como **evidencia histórica** de iteraciones que pasaron todas sus validaciones técnicas y llegaron a `HUMAN_GATE`, pero fueron rechazadas en revisión visual humana.
 
 ## Motivo
 
@@ -239,4 +247,4 @@ Sin cambios en `curriculum-graph.ts`, `packages/**`, dataset, engine, `/grafo` n
 
 ## Condición de terminación
 
-Este documento constituye la especificación de implementación de `TASK-009.1.2`. No se implementa código en esta entrega; no hay commit, push, merge ni deploy. Queda pendiente de lanzamiento tras aprobación humana explícita.
+Esta TASK **implementa código de producto** y termina en `HUMAN_GATE`, a la espera de revisión visual humana. El runner no hace commit, push, merge ni deploy: pasar `lint`/`typecheck`/`test`/`build` y los reviewers declarados **no** aprueba la entrega por sí solo — el criterio visual principal de este documento solo puede validarlo una persona frente al navegador.
