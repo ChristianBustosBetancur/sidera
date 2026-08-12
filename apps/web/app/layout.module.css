@@ -1,8 +1,11 @@
+/* Anclado a la DERECHA: la esquina inferior izquierda la ocupa ahora el pie de
+   la sidebar del shell —con su botón de contraer—, y el distintivo se
+   superponía justo encima. */
 .previewBadge {
   position: fixed;
   z-index: 10;
   bottom: max(0.75rem, env(safe-area-inset-bottom));
-  left: max(0.75rem, env(safe-area-inset-left));
+  right: max(0.75rem, env(safe-area-inset-right));
   max-width: calc(100vw - 1.5rem);
   padding: 0.35rem 0.65rem;
   overflow: hidden;
@@ -22,7 +25,7 @@
 @media (max-width: 47rem) {
   .previewBadge {
     bottom: max(0.5rem, env(safe-area-inset-bottom));
-    left: max(0.5rem, env(safe-area-inset-left));
+    right: max(0.5rem, env(safe-area-inset-right));
     max-width: calc(100vw - 1rem);
     padding: 0.3rem 0.55rem;
     font-size: 0.68rem;

@@ -1,0 +1,340 @@
+/* ── App Shell ─────────────────────────────────────────────────────────────
+   Marco común de las tres vistas. Deliberadamente sobrio: los encabezados de
+   cada vista siguen siendo el acento visual, así que la navegación es clara y
+   se aparta.
+
+   El shell es un flex horizontal en flujo NORMAL. Ni la sidebar ni la cabecera
+   usan `position: fixed`: /explorar mueve el lienzo con `window.scrollTo` y
+   mide posiciones con `getBoundingClientRect`, y sacarlas del flujo alteraría
+   ese sistema. `sticky` conserva el flujo y mantiene la navegación a la vista. */
+.shell {
+  display: flex;
+  min-height: 100vh;
+  align-items: flex-start;
+}
+
+/* `min-width: 0` es imprescindible: sin él, un hijo flex no baja de su ancho
+   de contenido y el `overflow-x` del árbol de /explorar dejaría de funcionar,
+   desbordando la página entera en horizontal. */
+.content {
+  min-width: 0;
+  flex: 1;
+}
+
+.content:focus {
+  outline: none;
+}
+
+.skipLink {
+  position: absolute;
+  z-index: 200;
+  top: 0.5rem;
+  left: 0.5rem;
+  padding: 0.6rem 0.9rem;
+  color: var(--brand);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  font-weight: 800;
+  text-decoration: none;
+  transform: translateY(-160%);
+}
+
+.skipLink:focus-visible {
+  transform: translateY(0);
+}
+
+/* ── Sidebar (escritorio) ───────────────────────────────────────────────── */
+.sidebar {
+  position: sticky;
+  top: 0;
+  display: flex;
+  width: 14.5rem;
+  height: 100vh;
+  flex: none;
+  flex-direction: column;
+  padding: 1rem 0.75rem;
+  gap: 0.75rem;
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+  transition: width 160ms ease;
+}
+
+.shell[data-collapsed="true"] .sidebar {
+  width: 4.25rem;
+  padding-inline: 0.5rem;
+}
+
+/* Colapsada, el texto se retira del flujo visual pero SIGUE en el DOM: es el
+   nombre accesible de cada enlace, así que no puede sustituirse por un
+   `display: none`. */
+.shell[data-collapsed="true"] .navLabel,
+.shell[data-collapsed="true"] .brandName {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.shell[data-collapsed="true"] .navLink {
+  justify-content: center;
+  padding-inline: 0;
+}
+
+/* Colapsada quedan ~3.25rem útiles, insuficientes para marca y control en la
+   misma línea: el encabezado se apila y ambos siguen visibles. */
+.shell[data-collapsed="true"] .sidebarHeader {
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.shell[data-collapsed="true"] .brand {
+  padding-inline: 0;
+}
+
+.shell[data-collapsed="true"] .collapseIcon {
+  transform: rotate(180deg);
+}
+
+/* Identidad y control de colapso comparten fila: el chevron se lee como parte
+   del encabezado del panel, no como un cuarto destino de navegación. */
+.sidebarHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.brand {
+  display: flex;
+  gap: 0.55rem;
+  align-items: center;
+  padding: 0.35rem 0.5rem;
+  color: var(--brand);
+  font-size: 1.05rem;
+  font-weight: 850;
+  letter-spacing: 0.01em;
+}
+
+.brandMark {
+  display: grid;
+  width: 1.75rem;
+  height: 1.75rem;
+  flex: none;
+  place-items: center;
+  color: #fff;
+  background: var(--brand);
+  border-radius: 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 900;
+}
+
+.nav {
+  display: grid;
+  gap: 0.15rem;
+}
+
+/* Área táctil cómoda (2.75rem) también en escritorio. */
+.navLink {
+  position: relative;
+  display: flex;
+  min-height: 2.75rem;
+  gap: 0.7rem;
+  align-items: center;
+  padding: 0 0.65rem;
+  color: var(--ink);
+  border-radius: 0.55rem;
+  font-size: 0.92rem;
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.navLink:hover {
+  background: #eef3f0;
+}
+
+.navIcon {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex: none;
+}
+
+/* Ruta activa: fondo, peso tipográfico Y una barra a la izquierda. Tres
+   señales, ninguna dependiente solo del color, además del `aria-current`. */
+.navLink[aria-current="page"] {
+  color: var(--brand);
+  background: var(--brand-soft);
+  font-weight: 900;
+}
+
+.navLink[aria-current="page"]::before {
+  position: absolute;
+  top: 0.45rem;
+  bottom: 0.45rem;
+  left: 0;
+  width: 0.2rem;
+  background: var(--brand);
+  border-radius: 99rem;
+  content: "";
+}
+
+.shell[data-collapsed="true"] .navLink[aria-current="page"]::before {
+  top: auto;
+  bottom: 0.25rem;
+  left: 50%;
+  width: 1.1rem;
+  height: 0.16rem;
+  transform: translateX(-50%);
+}
+
+/* Botón de solo icono: 2.25rem (36px) supera el mínimo de tamaño de destino, y
+   la sidebar solo existe en escritorio, donde el puntero es fino. */
+.collapseButton {
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex: none;
+  place-items: center;
+  padding: 0;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 0.55rem;
+  cursor: pointer;
+}
+
+.collapseButton:hover {
+  color: var(--ink);
+  background: #eef3f0;
+  border-color: var(--line);
+}
+
+.collapseIcon {
+  width: 1.15rem;
+  height: 1.15rem;
+  flex: none;
+}
+
+/* ── Cabecera compacta (táctil / tablet) ────────────────────────────────── */
+.topBar {
+  position: sticky;
+  z-index: 40;
+  top: 0;
+  display: none;
+  gap: 0.6rem;
+  align-items: center;
+  padding: 0.5rem max(0.75rem, env(safe-area-inset-left)) 0.5rem
+    max(0.75rem, env(safe-area-inset-left));
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+
+.menuButton,
+.drawerClose {
+  display: grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  flex: none;
+  place-items: center;
+  padding: 0;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 0.55rem;
+  cursor: pointer;
+}
+
+.menuButton svg {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
+.menuButton:hover,
+.drawerClose:hover {
+  background: #eef3f0;
+  border-color: var(--line);
+}
+
+.topBrand {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  color: var(--brand);
+  font-size: 1rem;
+  font-weight: 850;
+}
+
+.drawerClose {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+/* ── Drawer ─────────────────────────────────────────────────────────────── */
+/* Por encima de todo lo que existe en las vistas: paneles de detalle y bottom
+   sheets usan z-index 20, y los menús de la toolbar de /explorar 30. */
+.overlay {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  background: rgb(20 30 25 / 42%);
+}
+
+.drawer {
+  position: fixed;
+  z-index: 101;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  width: min(17rem, 82vw);
+  flex-direction: column;
+  padding: 0.75rem max(0.75rem, env(safe-area-inset-left))
+    max(0.75rem, env(safe-area-inset-bottom));
+  gap: 0.75rem;
+  overflow-y: auto;
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+}
+
+.drawer:focus {
+  outline: none;
+}
+
+.drawerHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+@media (max-width: 64rem) {
+  .sidebar {
+    display: none;
+  }
+
+  .topBar {
+    display: flex;
+  }
+
+  /* La cabecera pasa a ocupar su propia fila: el shell deja de ser una
+     columna lateral y se apila. */
+  .shell {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .content {
+    width: 100%;
+  }
+}
+
+/* Sin movimiento la navegación conserva toda su semántica: el estado activo se
+   lee por fondo, peso, barra y `aria-current`, y el colapso sigue funcionando
+   —solo deja de interpolarse. */
+@media (prefers-reduced-motion: reduce) {
+  .sidebar {
+    transition: none;
+  }
+}

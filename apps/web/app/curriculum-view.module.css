@@ -238,37 +238,6 @@
   font-size: 0.82rem;
 }
 
-.graphCta {
-  display: inline-flex;
-  gap: 0.45rem;
-  justify-content: center;
-  align-items: center;
-  min-width: 12rem;
-  min-height: 2.75rem;
-  margin-top: 0.7rem;
-  padding: 0.5rem 1.4rem;
-  color: var(--brand);
-  background: var(--surface);
-  border: 1px solid var(--brand);
-  border-radius: 0.55rem;
-  font-size: 0.9rem;
-  font-weight: 800;
-  text-decoration: none;
-  transition: color 120ms ease, background-color 120ms ease;
-}
-
-.graphCta:hover {
-  color: #ffffff;
-  background: var(--brand);
-}
-
-.graphCta span {
-  transition: transform 120ms ease;
-}
-
-.graphCta:hover span {
-  transform: translateX(0.15rem);
-}
 
 .curriculumTree {
   display: grid;
@@ -592,8 +561,4 @@
     animation: none;
   }
 
-  .graphCta,
-  .graphCta span {
-    transition: none;
-  }
 }

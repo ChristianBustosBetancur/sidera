@@ -15,7 +15,6 @@ import {
   type StudentTrajectory,
 } from "@sidera/curriculum-engine";
 import { unalCs2024Official } from "@sidera/curriculum-snapshot";
-import Link from "next/link";
 import { useMemo } from "react";
 import {
   blockingReasons,
@@ -390,14 +389,6 @@ export function CurriculumView() {
             {unalCs2024Official.versionCourses.length} materias incluidas en el
             dataset curado
           </p>
-          <Link href="/grafo" className={styles.graphCta}>
-            Ver grafo de dependencias
-            <span aria-hidden="true">→</span>
-          </Link>
-          <Link href="/explorar" className={styles.graphCta}>
-            Explorar mapa curricular
-            <span aria-hidden="true">→</span>
-          </Link>
         </div>
       </div>
 

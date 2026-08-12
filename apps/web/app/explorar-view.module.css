@@ -45,24 +45,6 @@
   color: #d5e8df;
 }
 
-.header nav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.55rem;
-}
-
-.header a,
-.instructions button {
-  min-height: 2.65rem;
-  padding: 0.65rem 0.85rem;
-  color: #183f35;
-  background: #fff;
-  border: 1px solid #fff;
-  border-radius: 0.55rem;
-  font-weight: 800;
-  text-decoration: none;
-}
-
 .instructions {
   display: flex;
   justify-content: space-between;
@@ -77,11 +59,21 @@
   border-radius: 0.75rem;
 }
 
+/* Botón "Salir del foco". Antes compartía selector con los enlaces de
+   navegación del encabezado, que ahora viven en el shell; al quedarse solo se
+   fusionan las dos reglas en una. */
 .instructions button {
+  display: inline-flex;
+  min-height: 2.65rem;
   flex: none;
+  align-items: center;
+  padding: 0.65rem 0.85rem;
   color: #fff;
   background: #183f35;
-  border-color: #183f35;
+  border: 1px solid #183f35;
+  border-radius: 0.55rem;
+  font-weight: 800;
+  text-decoration: none;
   cursor: pointer;
 }
 
