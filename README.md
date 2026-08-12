@@ -4,19 +4,29 @@ Sidera es un producto en desarrollo para estudiantes que necesitan explorar y en
 
 ## Qué es Sidera
 
-Sidera busca ofrecer una forma navegable de abrir un plan curricular y entender de un vistazo el avance del estudiante, las materias disponibles, las bloqueadas y los requisitos pendientes. La representación visual del plan como una estructura conectada es un objetivo del producto; la interfaz que la hará posible todavía está en construcción.
+Sidera ofrece una forma navegable de abrir un plan curricular y entender de un vistazo el avance del estudiante, las materias disponibles, las bloqueadas y los requisitos pendientes. El plan se representa como una estructura conectada, no como una lista.
 
 ## El problema
 
 Los planes curriculares suelen presentarse como listas, tablas o documentos PDF. En esos formatos, el estudiante debe rastrear prerrequisitos a mano, reconstruir cadenas de dependencias y comparar su historial con el plan para saber qué puede cursar. El estado de cada materia y el requisito concreto que falta para desbloquearla no son visibles de forma directa.
 
-## Qué busca ofrecer
+## Superficies
 
-- **En desarrollo:** explorar un plan curricular como una estructura navegable.
-- **En desarrollo:** visualizar las dependencias entre materias.
+La aplicación para estudiantes se organiza en tres vistas dentro de una navegación común.
+
+**Plan** (`/`) — el plan por componentes y agrupaciones, con el estado académico de cada materia, el progreso por créditos y el registro interactivo de la trayectoria.
+
+**Mapa de Prerrequisitos** (`/grafo`) — las relaciones de prerrequisito y correquisito entre asignaturas, con foco sobre una materia y panel de detalle.
+
+**Trayectoria Curricular** (`/explorar`) — el recorrido curricular como grafo dirigido vertical, con búsqueda, filtros por estado y agrupación, foco dirigido y panel de detalle.
+
+Las tres comparten un marco de navegación con barra lateral colapsable en escritorio, panel lateral en táctil y una barra persistente de contexto académico y progreso.
+
+## Qué ofrece el núcleo
+
 - **Implementado en `curriculum-engine`:** evaluar requisitos, determinar elegibilidad y derivar si una materia está disponible o bloqueada.
 - **Implementado en `curriculum-engine`:** producir diagnósticos sobre el requisito concreto que impide cursar una materia.
-- **En desarrollo:** representar el progreso del estudiante frente al plan mediante una interfaz visual.
+- **Implementado en `curriculum-engine`:** calcular el progreso frente al plan separando los créditos aprobados de los que están en curso.
 - **Implementado en el modelo de dominio; experiencia y datos en desarrollo:** representar distintos programas y versiones de plan.
 
 ## Modelo curricular
@@ -28,10 +38,10 @@ La arquitectura ya modela la jerarquía curricular indicada abajo: el modelo de 
 ## Estado actual
 
 - Sidera está en desarrollo activo y no está listo para producción.
-- `curriculum-domain`, `curriculum-schema` y `curriculum-engine` están implementados y todavía evolucionan.
-- Los demás paquetes y las aplicaciones continúan en construcción.
-- No hay datos institucionales reales; los datos presentes son ficticios y mínimos.
-- Las interfaces visuales aún están en construcción.
+- `curriculum-domain`, `curriculum-schema`, `curriculum-engine` y `curriculum-snapshot` están implementados y todavía evolucionan.
+- `apps/web` tiene sus tres vistas implementadas; `apps/admin` sigue siendo una página placeholder.
+- `curriculum-validator`, `curriculum-importer` y `database` continúan en construcción.
+- El dataset incluido corresponde a una única versión de plan y su ciclo de vida sigue marcado como borrador.
 - Los contratos internos pueden cambiar sin aviso.
 
 ## Ejecutar Sidera
@@ -59,7 +69,7 @@ Inicia el panel administrativo:
 pnpm --filter admin dev
 ```
 
-Ambas aplicaciones son actualmente páginas placeholder. `pnpm dev` inicia las dos mediante Turborepo; como usan `next dev` sin un puerto explícito, la segunda toma un puerto alternativo de forma no determinista. Para fijar el panel administrativo en el puerto 3001, usa:
+El panel administrativo es todavía una página placeholder. `pnpm dev` inicia ambas aplicaciones mediante Turborepo; como usan `next dev` sin un puerto explícito, la segunda toma un puerto alternativo de forma no determinista. Para fijar el panel administrativo en el puerto 3001, usa:
 
 ```bash
 pnpm --filter admin dev -- --port 3001
@@ -80,9 +90,10 @@ pnpm build
 
 El monorepo separa aplicaciones y lógica curricular:
 
-- `apps/web` y `apps/admin` contienen las interfaces placeholder.
+- `apps/web` contiene la aplicación para estudiantes; `apps/admin` sigue siendo una interfaz placeholder.
 - `packages/curriculum-domain`, `packages/curriculum-schema` y `packages/curriculum-engine` contienen el núcleo implementado de dominio, validación estructural y evaluación curricular.
-- `packages/curriculum-validator`, `packages/curriculum-snapshot`, `packages/curriculum-importer` y `packages/database` son stubs en construcción.
+- `packages/curriculum-snapshot` contiene la versión de plan que consume la aplicación.
+- `packages/curriculum-validator`, `packages/curriculum-importer` y `packages/database` son stubs en construcción.
 
 ## Documentación
 
