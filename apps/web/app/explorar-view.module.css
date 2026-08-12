@@ -1,0 +1,643 @@
+.page {
+  min-height: 100vh;
+  padding: 1.25rem clamp(0.75rem, 3vw, 3rem) 5rem;
+  background:
+    linear-gradient(180deg, #eef5f0 0, #f8faf7 24rem, #f4f1e9 100%);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  gap: 2rem;
+  align-items: end;
+  max-width: 92rem;
+  margin: 0 auto 1rem;
+  padding: clamp(1.3rem, 3vw, 2.3rem);
+  color: #f7fbf8;
+  background: #183f35;
+  border-radius: 1.3rem;
+}
+
+.header p,
+.header h1,
+.header span,
+.instructions p,
+.detail p {
+  margin: 0;
+}
+
+.header p,
+.eyebrow {
+  margin-bottom: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 850;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.header h1 {
+  margin: 0 0 0.45rem;
+  font-size: clamp(1.8rem, 4vw, 3.25rem);
+  line-height: 1.04;
+}
+
+.header span {
+  color: #d5e8df;
+}
+
+.header nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.header a,
+.instructions button {
+  min-height: 2.65rem;
+  padding: 0.65rem 0.85rem;
+  color: #183f35;
+  background: #fff;
+  border: 1px solid #fff;
+  border-radius: 0.55rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.instructions {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  max-width: 92rem;
+  margin: 0 auto 1rem;
+  padding: 0.8rem 1rem;
+  color: #44544e;
+  background: rgb(255 255 255 / 82%);
+  border: 1px solid #d3ded8;
+  border-radius: 0.75rem;
+}
+
+.instructions button {
+  flex: none;
+  color: #fff;
+  background: #183f35;
+  border-color: #183f35;
+  cursor: pointer;
+}
+
+/* El árbol ES la página: el lienzo ocupa todo el ancho disponible y no vive
+   dentro de una tarjeta. Sin grid de dos columnas — el panel de detalle es un
+   overlay fuera de flujo (ver .detail), así que aparecer o desaparecer nunca
+   recalcula ni comprime el layout del árbol. */
+.workspace {
+  width: 100%;
+}
+
+.treeRegion {
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  touch-action: pan-x pan-y;
+  background:
+    radial-gradient(circle at 50% 0, rgb(255 255 255 / 92%), transparent 31rem),
+    linear-gradient(90deg, transparent 49.92%, rgb(43 88 69 / 8%) 50%, transparent 50.08%);
+}
+
+/* `margin-inline: auto` centra el árbol cuando cabe en el viewport; cuando no
+   cabe, los márgenes automáticos resuelven a 0 y desborda sin recortar el
+   extremo izquierdo. El centrado inicial del viewport sobre el centro del
+   canvas lo hace la vista con `scrollLeft` (una sola vez al montar). */
+.canvasFrame {
+  margin-inline: auto;
+  width: max-content;
+}
+
+/* Tamaño natural en rem, desde minX/maxX del layout. Sin escala: los labels
+   conservan su tamaño legible y las posiciones del DAG no se tocan. */
+.canvas {
+  position: relative;
+}
+
+.branches {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: block;
+  overflow: visible;
+  pointer-events: none;
+}
+
+/* Estructura de fondo: verde/gris desaturado. En reposo son 73 líneas, así que
+   deben construir la silueta del árbol sin competir con las señales de
+   progreso (azul 5.46, ámbar 3.94) ni con el verde fuerte del foco (4.79). */
+.edges path,
+.stems path {
+  fill: none;
+  stroke: #8d9c94;
+  stroke-width: 0.17;
+  stroke-linecap: round;
+  transition: opacity 180ms ease, stroke-width 180ms ease;
+}
+
+/* PATRÓN = TIPO DE RELACIÓN. El dasharray queda reservado en exclusiva al
+   correquisito: ninguna otra regla de esta hoja introduce una línea
+   discontinua, para que "las líneas punteadas son correquisitos" sea siempre
+   cierto. No fija color propio — el color lo decide el estado del camino.
+   `butt` en lugar del `round` heredado: con caps redondos el hueco se cierra
+   al crecer el grosor bajo foco y el patrón dejaría de leerse justo cuando el
+   foco lo resalta. */
+.edges .corequisite {
+  stroke-dasharray: 0.44 0.4;
+  stroke-linecap: butt;
+}
+
+.stems path {
+  stroke-width: 0.22;
+}
+
+.edges .rest,
+.stems .rest {
+  opacity: 0.42;
+}
+
+/* Desbloqueo DIRECTO desde la selección: verde fuerte (4.46:1 contra el
+   fondo). También cubre las aristas salientes de la propia materia. */
+.edges .unlock,
+.stems .unlock {
+  stroke: #2f7d52;
+  stroke-width: 0.34;
+  opacity: 1;
+}
+
+/* Requisito DIRECTO de la selección: aristas entrantes. Presencia plena, pero
+   no propagan alcance hacia atrás. */
+.edges .prerequisite,
+.stems .prerequisite {
+  stroke: #527665;
+  stroke-width: 0.32;
+  opacity: 1;
+}
+
+/* Alcance FUTURO: cono dirigido a distancia >= 2. Coral cálido (3.18:1),
+   deliberadamente por debajo del verde para que se lea como "más adelante",
+   no como "lo desbloquea directamente". */
+.edges .future,
+.stems .future {
+  stroke: #cf6b4a;
+  stroke-width: 0.2;
+  opacity: 0.5;
+}
+
+.edges .unrelated,
+.stems .unrelated {
+  opacity: 0.03;
+}
+
+/* Requisito cumplido: el origen de la relación está completado. En reposo
+   recibe el azul y algo más de presencia, para que el camino ya satisfecho se
+   lea de un vistazo. Solo aplica en `rest`: bajo foco, la señal de foco es la
+   dominante y una arista azul ajena a la selección se atenúa como cualquier
+   otra. */
+.edges .satisfied.rest {
+  stroke: #0f6d99;
+  stroke-width: 0.3;
+  opacity: 0.72;
+}
+
+/* Excepción deliberada: un requisito directo YA cumplido conserva su
+   identidad azul mientras el foco lo mantiene en presencia plena. */
+.edges .satisfied.prerequisite {
+  stroke: #0f6d99;
+}
+
+/* Camino activo: el origen está en curso. Ámbar (3.66:1), claramente distinto
+   del azul de requisito cumplido. */
+.edges .active.rest {
+  stroke: #a8720f;
+  stroke-width: 0.26;
+  opacity: 0.66;
+}
+
+.edges .active.prerequisite {
+  stroke: #a8720f;
+}
+
+/* Ninguna arista se anima, y es deliberado.
+   IN_PROGRESS llevaba dasharray propio + `stroke-dashoffset` viajero: dos
+   errores. Uno semántico —el patrón discontinuo pasaba a significar dos cosas
+   a la vez, correquisito Y en curso, así que "punteado = correquisito" dejaba
+   de ser cierto— y uno visual: el dash en movimiento se leía como una tira de
+   rayitas desplazándose, no como un camino vivo. El desbloqueo directo bajo
+   foco arrastraba exactamente el mismo defecto.
+
+   Se evaluó sustituirlo por una animación continua limpia (sin dasharray, sin
+   partículas, sin filtros SVG, sin rAF, sin SMIL, sin reflow). Lo único que
+   queda dentro de esos límites es un latido de `stroke-opacity`, y sobre
+   varias aristas a la vez se lee como parpadeo, no como flujo. Se descarta: la
+   semántica no puede depender del movimiento, y una línea ámbar continua y
+   estática comunica "en curso" sin ambigüedad. */
+
+.nodes {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+}
+
+/* `left`/`top` los inyecta la vista como estilo inline en rem, sobre el mismo
+   sistema de coordenadas que el viewBox del SVG. */
+.node {
+  --ring: #667b71;
+  position: absolute;
+  display: flex;
+  width: 8.5rem;
+  min-height: 9rem;
+  padding: 0;
+  flex-direction: column;
+  align-items: center;
+  color: #14181c;
+  background: transparent;
+  border: 0;
+  transform: translate(-50%, -2.75rem);
+  cursor: pointer;
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.medallion {
+  position: relative;
+  display: grid;
+  width: 5.5rem;
+  height: 5.5rem;
+  flex: none;
+  place-items: center;
+  margin-bottom: 0.45rem;
+  color: #43534b;
+  background: #e6e7e3;
+  border: 0.34rem solid var(--ring);
+  border-radius: 50%;
+  box-shadow: 0 0.3rem 0.7rem rgb(28 52 43 / 13%);
+}
+
+.glyph {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  font-size: 1.15rem;
+  font-weight: 900;
+  border-radius: 50%;
+}
+
+.node strong {
+  display: -webkit-box;
+  width: 8.5rem;
+  overflow: hidden;
+  color: inherit;
+  font-size: 0.86rem;
+  line-height: 1.12;
+  text-align: center;
+  text-wrap: balance;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.node small {
+  margin-top: 0.22rem;
+  color: #59645f;
+  font-size: 0.67rem;
+  font-weight: 750;
+  letter-spacing: 0.025em;
+}
+
+.node[data-grouping="unal-cs-2024-mathematics"] { --ring: #2f6aa3; }
+.node[data-grouping="unal-cs-2024-programming"] { --ring: #9c7a17; }
+.node[data-grouping="unal-cs-2024-natural-sciences-statistics"] { --ring: #a83c74; }
+.node[data-grouping="unal-cs-2024-algorithms-computing"] { --ring: #2e2566; }
+.node[data-grouping="unal-cs-2024-scientific-computing"] { --ring: #9d5fc2; }
+.node[data-grouping="unal-cs-2024-computer-systems"] { --ring: #226e77; }
+.node[data-grouping="unal-cs-2024-applied-computing"] { --ring: #b34a1a; }
+.node[data-grouping="unal-cs-2024-degree-work"] { --ring: #6b2430; }
+
+/* Disponible = "puedo cursarla", nunca "ya avancé en ella". El glifo usa un
+   ámbar cálido (5.80:1) y fondo transparente: antes llevaba un disco verde
+   claro que estaba a 1.02:1 del relleno de COMPLETED, o sea el mismo verde a
+   ojo, y hacía que una materia sin empezar pareciera parcialmente recorrida. */
+.node[data-state="AVAILABLE"] .medallion {
+  background: #fffdf4;
+}
+
+.node[data-state="AVAILABLE"] .glyph {
+  color: #8a5a10;
+  background: transparent;
+}
+
+/* El nodo solo comunica ESTADO, nunca recorrido: relleno plano y cualitativo.
+   El progreso del camino vive exclusivamente en las aristas. */
+.node[data-state="IN_PROGRESS"] .medallion {
+  color: #14181c;
+  background: #e6eef7;
+}
+
+.node[data-state="IN_PROGRESS"] .glyph {
+  color: #fff;
+  background: #245f86;
+}
+
+/* Habilidad adquirida, tratamiento sobrio: fondo claro y check oscuro de alto
+   contraste (7.98:1). El anillo de agrupación conserva su color normal a plena
+   saturación (≥3.22:1 contra este fondo en los 8 tonos), así que no hace falta
+   aclararlo. La identidad azul del camino ya recorrido vive en las aristas
+   cuyo origen está completado (ver .satisfied), no en el relleno del nodo. */
+.node[data-state="COMPLETED"] .medallion {
+  color: #0f4c34;
+  background: #d5ebdf;
+}
+
+.node[data-state="COMPLETED"] .glyph {
+  color: #0f4c34;
+  background: transparent;
+}
+
+/* Las LÍNEAS son el portador principal del alcance futuro. El nodo futuro solo
+   se separa del fondo atenuado y recibe una marca coral discreta en el nombre;
+   conserva su anillo de agrupación y no se añade ningún anillo nuevo. */
+.node[data-relevance="future"] {
+  opacity: 0.62;
+}
+
+.node[data-relevance="future"] strong {
+  color: #8f3f22;
+}
+
+.node[data-relevance="unrelated"] { opacity: 0.17; }
+
+.node.selected .medallion {
+  outline: 0.22rem solid #14181c;
+  outline-offset: 0.28rem;
+}
+
+.node:hover,
+.node:focus-visible,
+.node.selected {
+  z-index: 3;
+  opacity: 1;
+  transform: translate(-50%, -2.75rem) scale(1.035);
+}
+
+.node:focus-visible {
+  outline: 0.18rem solid #14181c;
+  outline-offset: 0.25rem;
+  border-radius: 0.5rem;
+}
+
+/* Overlay flotante fuera de flujo: puede cubrir temporalmente parte del
+   viewport, pero el árbol conserva sus coordenadas y su tamaño. */
+.detail {
+  position: fixed;
+  z-index: 20;
+  top: clamp(1rem, 4vh, 4rem);
+  right: clamp(1rem, 2vw, 2.5rem);
+  width: clamp(19rem, 22vw, 23rem);
+  max-height: min(78vh, calc(100vh - 2rem));
+  overflow-y: auto;
+  /* El padding derecho reserva el hueco del botón de cierre. */
+  padding: 1.25rem 3.6rem 1.25rem 1.25rem;
+  color: #27342f;
+  background: #fff;
+  border: 1px solid #ced9d2;
+  border-radius: 1rem;
+  box-shadow: 0 0.8rem 2rem rgb(36 64 53 / 14%);
+}
+
+.detail .eyebrow {
+  color: #527064;
+}
+
+.detail h2 {
+  margin: 0.2rem 0;
+  color: #183f35;
+  font-size: 1.45rem;
+}
+
+.detailCode {
+  color: #64716b;
+  font-weight: 750;
+}
+
+.detail dl {
+  display: grid;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+
+.detail dl div {
+  display: grid;
+  grid-template-columns: 6rem 1fr;
+  gap: 0.5rem;
+}
+
+.detail dt {
+  color: #64716b;
+  font-size: 0.83rem;
+  font-weight: 750;
+}
+
+.detail dd {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.requirements {
+  padding-top: 0.85rem;
+  border-top: 1px solid #dce3de;
+}
+
+.requirements h3 {
+  margin: 0 0 0.45rem;
+  font-size: 0.95rem;
+}
+
+.requirements p,
+.requirements ul {
+  margin: 0;
+  color: #4d5c55;
+  font-size: 0.88rem;
+}
+
+.requirements ul {
+  padding-left: 1.2rem;
+}
+
+.requirements .blocking {
+  margin-top: 0.7rem;
+  color: #7c3e22;
+}
+
+.marking {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 1rem 0 0;
+  padding: 0.75rem 0 0;
+  border: 0;
+  border-top: 1px solid #dce3de;
+}
+
+.marking legend {
+  width: 100%;
+  margin-bottom: 0.45rem;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.marking button {
+  padding: 0.42rem 0.58rem;
+  color: #24463a;
+  background: #eef4f0;
+  border: 1px solid #b8cac0;
+  border-radius: 0.4rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.marking button[aria-pressed="true"] {
+  color: #fff;
+  background: #285e4c;
+  border-color: #285e4c;
+}
+
+.error {
+  max-width: 92rem;
+  margin: auto;
+  padding: 1rem;
+  color: #721f18;
+  background: #fce9e6;
+  border: 1px solid #d99a92;
+  border-radius: 0.7rem;
+}
+
+/* Pan del lienzo solo con mouse/pen: en táctil manda el scroll nativo, así que
+   no se captura el gesto ni se bloquea el scroll de página. */
+@media (hover: hover) and (pointer: fine) {
+  .treeRegion {
+    cursor: grab;
+  }
+
+  .treeRegion.dragging {
+    cursor: grabbing;
+    user-select: none;
+  }
+}
+
+/* Leyenda compacta, en línea con la instrucción existente. */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  margin: 0;
+  padding: 0;
+  color: #3c4b44;
+  font-size: 0.78rem;
+  list-style: none;
+}
+
+.legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.legend i {
+  display: inline-block;
+  width: 1.4rem;
+  height: 0.2rem;
+  flex: none;
+  border-radius: 99rem;
+}
+
+.legendSatisfied { background: #0f6d99; }
+.legendUnlock { background: #2f7d52; }
+.legendFuture { background: #cf6b4a; }
+
+/* Muestra de LÍNEA, no de medallón: la leyenda explica la semántica de las
+   aristas. CONTINUA y estática, igual que la arista real que representa: el
+   segmentado pertenece al correquisito y se explica aparte, en prosa. */
+.legendActive {
+  background: #a8720f;
+}
+
+/* Cierre explícito del panel: botón real, área táctil suficiente y foco
+   visible. Se ancla arriba a la derecha sin tapar el contenido. */
+.detailClose {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  display: flex;
+  width: 2.75rem;
+  height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: #27342f;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 0.5rem;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.detailClose:hover {
+  background: #eef2ef;
+  border-color: #ced9d2;
+}
+
+.detailClose:focus-visible {
+  outline: 0.18rem solid #14181c;
+  outline-offset: 0.1rem;
+}
+
+/* Táctil/tablet: bottom sheet propio, también fuera de flujo. */
+@media (max-width: 76rem) {
+  .detail {
+    top: auto;
+    right: 0;
+    left: 0;
+    bottom: 0;
+    width: auto;
+    max-height: 48vh;
+    padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+    border-radius: 1rem 1rem 0 0;
+    box-shadow: 0 -0.8rem 2rem rgb(36 64 53 / 16%);
+  }
+}
+
+@media (max-width: 42rem) {
+  .page {
+    padding-inline: 0.5rem;
+  }
+
+  .header {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .instructions {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+}
+
+/* La semántica ya era independiente del movimiento antes de llegar aquí: las
+   aristas no se animan en ningún caso, así que este bloque solo retira las
+   transiciones de hover/foco. Con o sin movimiento se sostiene lo mismo:
+   azul = cumplido, ámbar = en curso, continuo = prerrequisito,
+   discontinuo = correquisito. */
+@media (prefers-reduced-motion: reduce) {
+  .node,
+  .edges path,
+  .stems path {
+    transition: none;
+  }
+}
