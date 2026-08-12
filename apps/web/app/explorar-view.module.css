@@ -423,6 +423,50 @@
   font-weight: 750;
 }
 
+/* Asa de arrastre. En táctil no lleva afordancia ninguna: el panel es un
+   bottom sheet y no se mueve, así que el cursor `grab` y la supresión de
+   selección viven solo en desktop (mismo umbral que usa el bottom sheet, en
+   negativo). El arrastre en sí ya está restringido a `variant === "desktop"`
+   en la vista; esto es únicamente la señal visual. */
+@media (min-width: 76.001rem) {
+  /* La superficie arrastrable es el panel entero: cabecera, padding, huecos y
+     fondo. El cursor lo anuncia en toda esa extensión, no solo en el título. */
+  .detail {
+    cursor: grab;
+  }
+
+  /* Zonas que conservan interacción normal: texto de contenido y controles.
+     Recuperan el cursor por defecto para no prometer un arrastre que el guard
+     de `pointerdown` va a rechazar. */
+  .detail [data-no-drag] {
+    cursor: auto;
+  }
+
+  .panelDragging,
+  .panelDragging .detailHandle {
+    cursor: grabbing;
+  }
+
+  /* Evita que el gesto pinte una selección de texto mientras se arrastra. */
+  .panelDragging {
+    user-select: none;
+  }
+
+  /* Grip discreto: rejilla 3x2 de puntos dibujada con un solo gradiente, sin
+     iconos ni caracteres cuyo render varíe entre plataformas. Comunica "esto
+     se mueve" sin competir con el título. En táctil no aparece: ahí el panel
+     es un bottom sheet y no se arrastra. */
+  .detailHandle::before {
+    content: "";
+    display: block;
+    width: 1.05rem;
+    height: 0.45rem;
+    margin-bottom: 0.5rem;
+    background-image: radial-gradient(circle, #b4c1ba 42%, transparent 46%);
+    background-size: 0.35rem 0.225rem;
+  }
+}
+
 .detail dl {
   display: grid;
   gap: 0.5rem;

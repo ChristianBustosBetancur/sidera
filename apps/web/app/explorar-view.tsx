@@ -70,6 +70,33 @@ type Relevance =
   | "unrelated";
 
 const DRAG_THRESHOLD = 5;
+/* Margen mínimo entre el panel arrastrado y el borde del viewport. */
+const PANEL_EDGE_MARGIN = 8;
+/* Franja del panel que siempre queda dentro del viewport por abajo, para que
+   su cabecera —y con ella el botón de cierre— nunca sea inalcanzable. */
+const PANEL_MIN_VISIBLE = 56;
+
+type PanelOffset = { x: number; y: number };
+type PanelBase = { left: number; top: number; right: number };
+
+/* El offset es un delta sobre la posición que fija el CSS (`top`/`right` en
+   clamp responsive), nunca una posición absoluta: así el panel conserva su
+   anclaje inicial y basta con no aplicar el transform para que el bottom sheet
+   de tablet/móvil quede intacto. */
+function clampPanelOffset(offset: PanelOffset, base: PanelBase): PanelOffset {
+  const minX = PANEL_EDGE_MARGIN - base.left;
+  const maxX = window.innerWidth - PANEL_EDGE_MARGIN - base.right;
+  const minY = PANEL_EDGE_MARGIN - base.top;
+  const maxY =
+    window.innerHeight - PANEL_EDGE_MARGIN - PANEL_MIN_VISIBLE - base.top;
+  /* Si el panel no cabe a lo ancho, `maxX < minX` y este orden deja fijo el
+     borde izquierdo: preferimos perder el derecho antes que el inicio del
+     texto. */
+  return {
+    x: Math.max(minX, Math.min(maxX, offset.x)),
+    y: Math.max(minY, Math.min(maxY, offset.y)),
+  };
+}
 
 const stateLabels: Record<DerivedCourseState, string> = {
   AVAILABLE: "Disponible",
@@ -369,6 +396,111 @@ export function ExplorerView() {
   } | null>(null);
   const suppressNextClickRef = useRef(false);
 
+  /* Arrastre del panel de detalle. Solo desktop: en táctil manda el bottom
+     sheet y su scroll nativo. El offset se descarta al cambiar de selección,
+     así que al reabrir el panel vuelve a su anclaje inicial (no se persiste). */
+  const panelRef = useRef<HTMLElement>(null);
+  const [panelOffset, setPanelOffset] = useState<PanelOffset>({ x: 0, y: 0 });
+  const [isPanelDragging, setIsPanelDragging] = useState(false);
+  const panelDragRef = useRef<{
+    pointerId: number;
+    handle: Element;
+    startX: number;
+    startY: number;
+    origin: PanelOffset;
+    base: PanelBase;
+  } | null>(null);
+
+  useEffect(() => {
+    setPanelOffset({ x: 0, y: 0 });
+  }, [selectedId]);
+
+  /* Reencuadre al cambiar el viewport: sin esto, un panel movido al borde
+     derecho quedaría fuera de pantalla al estrechar la ventana. El listener
+     vive solo mientras hay panel abierto en desktop. */
+  useEffect(() => {
+    if (variant !== "desktop" || !selectedId) return;
+    const handleResize = () => {
+      const panel = panelRef.current;
+      if (!panel) return;
+      setPanelOffset((current) => {
+        if (current.x === 0 && current.y === 0) return current;
+        const rect = panel.getBoundingClientRect();
+        return clampPanelOffset(current, {
+          left: rect.left - current.x,
+          top: rect.top - current.y,
+          right: rect.right - current.x,
+        });
+      });
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [variant, selectedId]);
+
+  const handlePanelPointerDown = (event: ReactPointerEvent<HTMLElement>) => {
+    if (variant !== "desktop" || event.button !== 0) return;
+    /* Superficie arrastrable = todo el panel MENOS dos cosas: los controles
+       —que conservan su gesto propio— y los bloques marcados `data-no-drag`,
+       que son texto de contenido donde seleccionar y copiar importa más que
+       mover la ventana. El scroll del panel es de rueda, un evento ajeno a
+       Pointer Events, así que ampliar la superficie no lo afecta. */
+    if (
+      event.target instanceof Element &&
+      event.target.closest(
+        "button, a, input, select, textarea, [role='button'], [contenteditable], [data-no-drag]",
+      )
+    ) {
+      return;
+    }
+    const panel = panelRef.current;
+    if (!panel) return;
+    const rect = panel.getBoundingClientRect();
+    panelDragRef.current = {
+      pointerId: event.pointerId,
+      handle: event.currentTarget,
+      startX: event.clientX,
+      startY: event.clientY,
+      origin: panelOffset,
+      /* Caja del panel sin el transform vigente: la referencia estable contra
+         la que se clampea durante todo el gesto. */
+      base: {
+        left: rect.left - panelOffset.x,
+        top: rect.top - panelOffset.y,
+        right: rect.right - panelOffset.x,
+      },
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setIsPanelDragging(true);
+    /* El pan del lienzo no debe ver este gesto. */
+    event.stopPropagation();
+  };
+
+  const handlePanelPointerMove = (event: ReactPointerEvent<HTMLElement>) => {
+    const drag = panelDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    event.stopPropagation();
+    event.preventDefault();
+    setPanelOffset(
+      clampPanelOffset(
+        {
+          x: drag.origin.x + event.clientX - drag.startX,
+          y: drag.origin.y + event.clientY - drag.startY,
+        },
+        drag.base,
+      ),
+    );
+  };
+
+  const finishPanelDrag = (event: ReactPointerEvent<HTMLElement>) => {
+    const drag = panelDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    panelDragRef.current = null;
+    if (drag.handle.hasPointerCapture(event.pointerId)) {
+      drag.handle.releasePointerCapture(event.pointerId);
+    }
+    setIsPanelDragging(false);
+  };
+
   /* El árbol conserva su tamaño natural (escala 1): al entrar se centra el
      viewport sobre el centro real del canvas desplazando el scroll de la
      región. No hay relayout, no se reducen labels y no se mueve ningún nodo.
@@ -611,7 +743,20 @@ export function ExplorerView() {
           </section>
 
           {selectedVersionCourse && selectedCourse && selectedState ? (
-            <aside className={styles.detail} aria-live="polite">
+            <aside
+              ref={panelRef}
+              className={`${styles.detail} ${isPanelDragging ? styles.panelDragging : ""}`}
+              aria-live="polite"
+              style={
+                variant === "desktop" && (panelOffset.x !== 0 || panelOffset.y !== 0)
+                  ? { transform: `translate(${panelOffset.x}px, ${panelOffset.y}px)` }
+                  : undefined
+              }
+              onPointerDown={handlePanelPointerDown}
+              onPointerMove={handlePanelPointerMove}
+              onPointerUp={finishPanelDrag}
+              onPointerCancel={finishPanelDrag}
+            >
                 <button
                   type="button"
                   className={styles.detailClose}
@@ -620,10 +765,14 @@ export function ExplorerView() {
                 >
                   <span aria-hidden="true">×</span>
                 </button>
-                <p className={styles.eyebrow}>Materia seleccionada</p>
-                <h2>{selectedCourse.name}</h2>
-                <p className={styles.detailCode}>{selectedVersionCourse.academicCode}</p>
-                <dl>
+                {/* Cabecera: no monopoliza el arrastre —el panel entero es
+                    agarrable— pero sí lleva el grip que lo hace descubrible. */}
+                <div className={styles.detailHandle}>
+                  <p className={styles.eyebrow}>Materia seleccionada</p>
+                  <h2>{selectedCourse.name}</h2>
+                  <p className={styles.detailCode}>{selectedVersionCourse.academicCode}</p>
+                </div>
+                <dl data-no-drag>
                   <div><dt>Estado</dt><dd>{stateLabels[selectedState]}</dd></div>
                   <div><dt>Créditos</dt><dd>{selectedVersionCourse.credits}</dd></div>
                   <div>
@@ -631,7 +780,7 @@ export function ExplorerView() {
                     <dd>{groupingsById.get(selectedVersionCourse.groupingId)?.name}</dd>
                   </div>
                 </dl>
-                <div className={styles.requirements}>
+                <div className={styles.requirements} data-no-drag>
                   <h3>Cómo se desbloquea</h3>
                   {selectedRequirements.length > 0 ? (
                     <ul>{selectedRequirements.map((line) => <li key={line}>{line}</li>)}</ul>
@@ -642,7 +791,7 @@ export function ExplorerView() {
                     <ul className={styles.blocking}>{reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>
                   ) : null}
                 </div>
-                <div className={styles.requirements}>
+                <div className={styles.requirements} data-no-drag>
                   <h3>Qué desbloquea</h3>
                   {directDependents.length > 0 ? (
                     <ul>
@@ -654,7 +803,7 @@ export function ExplorerView() {
                     <p>No es requisito directo de ninguna materia.</p>
                   )}
                 </div>
-                <fieldset className={styles.marking}>
+                <fieldset className={styles.marking} data-no-drag>
                   <legend>Registrar avance</legend>
                   {(["UNMARKED", "IN_PROGRESS", "COMPLETED"] as const).map((mark) => (
                     <button
