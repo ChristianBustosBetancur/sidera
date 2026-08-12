@@ -9,7 +9,6 @@ import {
   type DerivedCourseState,
 } from "@sidera/curriculum-engine";
 import { unalCs2024Official } from "@sidera/curriculum-snapshot";
-import Link from "next/link";
 import {
   type PointerEvent as ReactPointerEvent,
   useCallback,
@@ -471,10 +470,6 @@ export function GraphView() {
             directas.
           </span>
         </div>
-        <nav aria-label="Vistas del plan curricular">
-          <Link href="/">Ver plan por componentes</Link>{" "}
-          <Link href="/explorar">Explorar mapa curricular</Link>
-        </nav>
       </header>
 
       <section className={styles.controls} aria-label="Leyenda e instrucciones">

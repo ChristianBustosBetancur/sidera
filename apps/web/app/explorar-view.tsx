@@ -6,7 +6,6 @@ import {
   type DerivedCourseState,
 } from "@sidera/curriculum-engine";
 import { unalCs2024Official } from "@sidera/curriculum-snapshot";
-import Link from "next/link";
 import {
   type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
@@ -876,10 +875,6 @@ export function ExplorerView() {
           <h1>Explora tu árbol de habilidades</h1>
           <span>De los fundamentos a las ramas avanzadas del programa.</span>
         </div>
-        <nav aria-label="Vistas del plan">
-          <Link href="/">Vista Plan</Link>
-          <Link href="/grafo">Vista Grafo</Link>
-        </nav>
       </header>
 
       <section className={styles.instructions} aria-label="Cómo usar el árbol">
