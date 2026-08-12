@@ -391,7 +391,11 @@ export function CurriculumView() {
             dataset curado
           </p>
           <Link href="/grafo" className={styles.graphCta}>
-            Explorar grafo interactivo
+            Ver grafo de dependencias
+            <span aria-hidden="true">→</span>
+          </Link>
+          <Link href="/explorar" className={styles.graphCta}>
+            Explorar mapa curricular
             <span aria-hidden="true">→</span>
           </Link>
         </div>

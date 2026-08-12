@@ -51,6 +51,52 @@ type DragState = {
 };
 
 const DRAG_THRESHOLD = 5;
+/* Umbral literal del bloque `@media (min-width: 72.001rem)` de la hoja: el
+   panel es arrastrable exactamente donde el CSS lo hace lateral flotante, y
+   deja de serlo exactamente donde pasa a bottom sheet. Un solo breakpoint. */
+const WIDE_DESKTOP_QUERY = "(min-width: 72.001rem)";
+/* Margen mínimo entre el panel arrastrado y el borde del viewport. */
+const PANEL_EDGE_MARGIN = 8;
+/* Franja del panel que siempre queda dentro del viewport por abajo, para que
+   su cabecera —y con ella el botón Cerrar— nunca sea inalcanzable. */
+const PANEL_MIN_VISIBLE = 56;
+
+type PanelOffset = { x: number; y: number };
+type PanelBase = { left: number; top: number; right: number };
+
+/* El offset es un delta sobre la posición que fija el CSS (`top`/`right` en
+   clamp con vw), nunca una posición absoluta: así el panel conserva su anclaje
+   responsive y basta con no aplicar el transform para que el bottom sheet de
+   <=72rem quede intacto. */
+function clampPanelOffset(offset: PanelOffset, base: PanelBase): PanelOffset {
+  const minX = PANEL_EDGE_MARGIN - base.left;
+  const maxX = window.innerWidth - PANEL_EDGE_MARGIN - base.right;
+  const minY = PANEL_EDGE_MARGIN - base.top;
+  const maxY =
+    window.innerHeight - PANEL_EDGE_MARGIN - PANEL_MIN_VISIBLE - base.top;
+  /* Si el panel no cabe a lo ancho, `maxX < minX` y este orden deja fijo el
+     borde izquierdo: preferimos perder el derecho antes que el inicio del
+     texto. */
+  return {
+    x: Math.max(minX, Math.min(maxX, offset.x)),
+    y: Math.max(minY, Math.min(maxY, offset.y)),
+  };
+}
+
+/* Arranca en `false` para que el render de servidor no asuma un viewport que
+   no conoce; el primer efecto lo corrige. El panel solo existe tras una
+   selección del usuario, así que no hay parpadeo observable. */
+function useIsWideDesktop(): boolean {
+  const [isWideDesktop, setIsWideDesktop] = useState(false);
+  useEffect(() => {
+    const query = window.matchMedia(WIDE_DESKTOP_QUERY);
+    const update = () => setIsWideDesktop(query.matches);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+  return isWideDesktop;
+}
 
 const graph = buildCurriculumGraph(unalCs2024Official.versionCourses);
 
@@ -60,6 +106,19 @@ const stateLabels: Record<DerivedCourseState, string> = {
   COMPLETED: "Completada",
   IN_PROGRESS: "En curso",
 };
+
+function GroupingLegendItems() {
+  return (
+    <>
+      {unalCs2024Official.groupings.map((grouping) => (
+        <span key={grouping.id}>
+          <i className={styles.groupingSwatch} data-grouping={grouping.id} />
+          {grouping.name}
+        </span>
+      ))}
+    </>
+  );
+}
 
 function GraphCourseCard({
   versionCourse,
@@ -81,6 +140,7 @@ function GraphCourseCard({
   return (
     <article
       ref={setNodeRef}
+      data-grouping={versionCourse.groupingId}
       className={`${styles.courseCard} ${styles[state.toLowerCase()]} ${selected ? styles.selected : ""} ${dimmed ? styles.dimmed : ""}`}
       onClick={onSelect}
       aria-current={selected ? "true" : undefined}
@@ -119,6 +179,111 @@ export function GraphView() {
   const nodeRefs = useRef(new Map<VersionCourseId, HTMLElement>());
   const dragStateRef = useRef<DragState | null>(null);
   const suppressNextClickRef = useRef(false);
+
+  /* Arrastre del panel de detalle. Solo en desktop ancho: en <=72rem el panel
+     es un bottom sheet y no se mueve. El offset se descarta al cambiar de
+     selección, así que al reabrir vuelve a su anclaje inicial (no se persiste). */
+  const isWideDesktop = useIsWideDesktop();
+  const [panelOffset, setPanelOffset] = useState<PanelOffset>({ x: 0, y: 0 });
+  const [isPanelDragging, setIsPanelDragging] = useState(false);
+  const panelDragRef = useRef<{
+    pointerId: number;
+    handle: Element;
+    startX: number;
+    startY: number;
+    origin: PanelOffset;
+    base: PanelBase;
+  } | null>(null);
+
+  useEffect(() => {
+    setPanelOffset({ x: 0, y: 0 });
+  }, [selectedId]);
+
+  /* Reencuadre al cambiar el viewport: sin esto, un panel movido al borde
+     derecho quedaría fuera de pantalla al estrechar la ventana. El listener
+     vive solo mientras hay panel abierto en desktop ancho. */
+  useEffect(() => {
+    if (!isWideDesktop || !selectedId) return;
+    const handleResize = () => {
+      const panel = detailPanelRef.current;
+      if (!panel) return;
+      setPanelOffset((current) => {
+        if (current.x === 0 && current.y === 0) return current;
+        const rect = panel.getBoundingClientRect();
+        return clampPanelOffset(current, {
+          left: rect.left - current.x,
+          top: rect.top - current.y,
+          right: rect.right - current.x,
+        });
+      });
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [isWideDesktop, selectedId]);
+
+  const handlePanelPointerDown = (event: ReactPointerEvent<HTMLElement>) => {
+    if (!isWideDesktop || event.button !== 0) return;
+    /* Superficie arrastrable = todo el panel MENOS dos cosas: los controles
+       —que conservan su gesto propio— y los bloques marcados `data-no-drag`,
+       que son texto de contenido donde seleccionar y copiar importa más que
+       mover la ventana. El scroll del panel es de rueda, un evento ajeno a
+       Pointer Events, así que ampliar la superficie no lo afecta. */
+    if (
+      event.target instanceof Element &&
+      event.target.closest(
+        "button, a, input, select, textarea, [role='button'], [contenteditable], [data-no-drag]",
+      )
+    ) {
+      return;
+    }
+    const panel = detailPanelRef.current;
+    if (!panel) return;
+    const rect = panel.getBoundingClientRect();
+    panelDragRef.current = {
+      pointerId: event.pointerId,
+      handle: event.currentTarget,
+      startX: event.clientX,
+      startY: event.clientY,
+      origin: panelOffset,
+      /* Caja del panel sin el transform vigente: la referencia estable contra
+         la que se clampea durante todo el gesto. */
+      base: {
+        left: rect.left - panelOffset.x,
+        top: rect.top - panelOffset.y,
+        right: rect.right - panelOffset.x,
+      },
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setIsPanelDragging(true);
+    /* El pan del grafo no debe ver este gesto. */
+    event.stopPropagation();
+  };
+
+  const handlePanelPointerMove = (event: ReactPointerEvent<HTMLElement>) => {
+    const drag = panelDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    event.stopPropagation();
+    event.preventDefault();
+    setPanelOffset(
+      clampPanelOffset(
+        {
+          x: drag.origin.x + event.clientX - drag.startX,
+          y: drag.origin.y + event.clientY - drag.startY,
+        },
+        drag.base,
+      ),
+    );
+  };
+
+  const finishPanelDrag = (event: ReactPointerEvent<HTMLElement>) => {
+    const drag = panelDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    panelDragRef.current = null;
+    if (drag.handle.hasPointerCapture(event.pointerId)) {
+      drag.handle.releasePointerCapture(event.pointerId);
+    }
+    setIsPanelDragging(false);
+  };
 
   const coursesByGraphLevel = useMemo(() => {
     const result = new Map<number, VersionCourse[]>();
@@ -306,7 +471,10 @@ export function GraphView() {
             directas.
           </span>
         </div>
-        <Link href="/">Ver plan por componentes</Link>
+        <nav aria-label="Vistas del plan curricular">
+          <Link href="/">Ver plan por componentes</Link>{" "}
+          <Link href="/explorar">Explorar mapa curricular</Link>
+        </nav>
       </header>
 
       <section className={styles.controls} aria-label="Leyenda e instrucciones">
@@ -314,6 +482,18 @@ export function GraphView() {
           <span><i className={styles.solidLine} /> Prerrequisito</span>
           <span><i className={styles.dashedLine} /> Correquisito</span>
         </div>
+        <div className={styles.groupingLegend}>
+          <p className={styles.groupingLegendLabel}>Agrupaciones curriculares</p>
+          <div className={styles.groupingList}>
+            <GroupingLegendItems />
+          </div>
+        </div>
+        <details className={styles.groupingLegendMobile}>
+          <summary>Agrupaciones curriculares</summary>
+          <div className={styles.groupingList}>
+            <GroupingLegendItems />
+          </div>
+        </details>
         <p>
           Selecciona una materia para destacar sus relaciones directas. Vuelve a
           seleccionarla para limpiar el foco.
@@ -446,14 +626,25 @@ export function GraphView() {
         {selectedVersionCourse && selectedState ? (
           <aside
             ref={detailPanelRef}
-            className={styles.detailPanel}
+            className={`${styles.detailPanel} ${isPanelDragging ? styles.panelDragging : ""}`}
             role="dialog"
             aria-modal="false"
             aria-labelledby="course-detail-title"
             tabIndex={-1}
+            style={
+              isWideDesktop && (panelOffset.x !== 0 || panelOffset.y !== 0)
+                ? { transform: `translate(${panelOffset.x}px, ${panelOffset.y}px)` }
+                : undefined
+            }
+            onPointerDown={handlePanelPointerDown}
+            onPointerMove={handlePanelPointerMove}
+            onPointerUp={finishPanelDrag}
+            onPointerCancel={finishPanelDrag}
           >
             <div className={styles.detailHeader}>
-              <div>
+              {/* Lleva el grip que hace descubrible el arrastre; la superficie
+                  agarrable, en cambio, es el panel entero. */}
+              <div className={styles.detailHeading}>
                 <span className={styles.detailEyebrow}>Detalle de materia</span>
                 <h2 id="course-detail-title">
                   {selectedCourse?.name ?? "Materia sin nombre"}
@@ -464,7 +655,7 @@ export function GraphView() {
               </button>
             </div>
 
-            <dl className={styles.detailFacts}>
+            <dl className={styles.detailFacts} data-no-drag>
               <div>
                 <dt>Código</dt>
                 <dd>{selectedVersionCourse.academicCode}</dd>
@@ -489,7 +680,7 @@ export function GraphView() {
               </div>
             </dl>
 
-            <section className={styles.detailSection}>
+            <section className={styles.detailSection} data-no-drag>
               <h3>Requisitos</h3>
               {selectedRequirements.length > 0 ? (
                 <ul className={styles.requirements}>
@@ -503,7 +694,7 @@ export function GraphView() {
             </section>
 
             {selectedState === "BLOCKED" ? (
-              <section className={styles.detailSection}>
+              <section className={styles.detailSection} data-no-drag>
                 <h3>Por qué está bloqueada</h3>
                 {selectedBlockingReasons.length > 0 ? (
                   <ul className={styles.requirements}>
@@ -517,7 +708,7 @@ export function GraphView() {
               </section>
             ) : null}
 
-            <section className={styles.detailSection}>
+            <section className={styles.detailSection} data-no-drag>
               <h3>Trayectoria</h3>
               <div
                 className={styles.actions}

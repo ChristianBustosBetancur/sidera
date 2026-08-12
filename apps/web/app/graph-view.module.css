@@ -40,6 +40,16 @@
   color: #d7e9df;
 }
 
+/* Contenedor común de los enlaces de vista. Sin esta regla el `<nav>` era un
+   bloque normal y sus dos enlaces `inline-flex` quedaban separados únicamente
+   por el espacio de texto del JSX, que se lee como "pegados". El gap vive en
+   el contenedor, no en márgenes de cada enlace. */
+.header nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
 .header a {
   display: inline-flex;
   flex: none;
@@ -95,6 +105,101 @@
 .dashedLine {
   border-top-style: dashed;
   border-top-color: #8a5b22;
+}
+
+.groupingLegend,
+.groupingLegendMobile {
+  flex: 1 1 16rem;
+  min-width: 16rem;
+}
+
+.groupingLegend {
+  display: none;
+}
+
+.groupingLegendLabel {
+  margin: 0 0 0.6rem;
+  color: var(--ink);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.groupingLegendMobile summary {
+  color: var(--ink);
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.groupingList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.1rem;
+  margin-top: 0.6rem;
+}
+
+.groupingList span {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--ink);
+  font-size: 0.82rem;
+}
+
+.groupingSwatch {
+  display: inline-block;
+  flex: none;
+  width: 1.1rem;
+  height: 0.35rem;
+  border-radius: 0.15rem;
+}
+
+.groupingSwatch[data-grouping="unal-cs-2024-mathematics"] {
+  background: #2f6aa3;
+}
+
+.groupingSwatch[data-grouping="unal-cs-2024-programming"] {
+  background: #9c7a17;
+}
+
+.groupingSwatch[data-grouping="unal-cs-2024-natural-sciences-statistics"] {
+  background: #a83c74;
+}
+
+.groupingSwatch[data-grouping="unal-cs-2024-algorithms-computing"] {
+  background: #2e2566;
+}
+
+.groupingSwatch[data-grouping="unal-cs-2024-scientific-computing"] {
+  background: #9d5fc2;
+}
+
+.groupingSwatch[data-grouping="unal-cs-2024-computer-systems"] {
+  background: #226e77;
+}
+
+.groupingSwatch[data-grouping="unal-cs-2024-applied-computing"] {
+  background: #b34a1a;
+}
+
+.groupingSwatch[data-grouping="unal-cs-2024-degree-work"] {
+  background: #6b2430;
+}
+
+@media (min-width: 47.001rem) {
+  /* Dos presentaciones separadas en vez de forzar <details> cerrado a
+     mostrar contenido por CSS: ese mecanismo depende de cómo cada motor
+     de render gestiona internamente el colapso nativo y no es fiable
+     entre navegadores. Aquí, en vez, se alterna con `display` entre un
+     bloque estático (desktop/tablet) y el <details> (móvil, definido
+     como estilo base más abajo) — sin JavaScript, sin estado nuevo. */
+  .groupingLegend {
+    display: block;
+  }
+
+  .groupingLegendMobile {
+    display: none;
+  }
 }
 
 .graphError {
@@ -226,16 +331,18 @@
 .prerequisiteEdge,
 .corequisiteEdge {
   fill: none;
-  stroke: #52796a;
-  stroke-width: 2;
-  opacity: 0.7;
+  stroke: #3f6e5a;
+  stroke-width: 2.25;
+  opacity: 0.78;
   vector-effect: non-scaling-stroke;
   transition: opacity 120ms ease;
 }
 
 .corequisiteEdge {
-  stroke: #8a5b22;
+  stroke: #82551f;
+  stroke-width: 2;
   stroke-dasharray: 7 5;
+  opacity: 0.72;
 }
 
 .edgeDimmed {
@@ -253,28 +360,141 @@
   min-height: 6.5rem;
   flex-direction: column;
   padding: 0.8rem;
+  color: #16181a;
   background: #ffffff;
-  border: 1px solid #cbd2cc;
-  border-left: 5px solid #89938c;
+  border: 1px solid #d5d8d6;
   border-radius: 0.55rem;
-  box-shadow: 0 1px 2px rgb(23 33 27 / 10%);
-  transition: opacity 120ms ease, box-shadow 120ms ease;
+  box-shadow: none;
+  transition: opacity 120ms ease, box-shadow 160ms ease;
 }
 
-.available {
-  border-left-color: #24714f;
-}
-
-.in_progress {
-  border-left-color: #286ca8;
-}
-
-.completed {
-  border-left-color: #5b3a8d;
+.courseCard::after {
+  position: absolute;
+  top: 0.62rem;
+  right: 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 900;
+  line-height: 1;
+  pointer-events: none;
 }
 
 .blocked {
-  background: #f7f7f4;
+  color: #33383a;
+  background: #eceeed;
+  border-color: #c9cbca;
+}
+
+/* Candado dibujado con CSS: monocromo y determinista en cualquier plataforma.
+   Deliberadamente NO se usa el emoji U+1F512, que muchos sistemas renderizan
+   a color con su fuente de emoji e ignoran la propiedad `color`.
+   Ambos pseudo-elementos son `position: absolute`, así que no alteran el flujo
+   de la tarjeta y no invalidan las medidas de `measureEdges`. */
+.blocked::before,
+.blocked::after {
+  position: absolute;
+  content: "";
+  pointer-events: none;
+}
+
+/* Cuerpo del candado. */
+.blocked::after {
+  top: 0.66rem;
+  right: 0.65rem;
+  width: 0.6rem;
+  height: 0.48rem;
+  background: #52565a;
+  border-radius: 0.09rem;
+}
+
+/* Arco del candado. */
+.blocked::before {
+  top: 0.44rem;
+  right: 0.78rem;
+  width: 0.34rem;
+  height: 0.24rem;
+  border: 0.09rem solid #52565a;
+  border-bottom: 0;
+  border-radius: 0.2rem 0.2rem 0 0;
+}
+
+/* Un solo perímetro por tarjeta. AVAILABLE llevaba `outline` + `outline-offset`
+   sobre el borde propio de la card: el offset abría un hueco entre ambos y el
+   resultado se leía como una tarjeta dentro de otra. El outline exterior queda
+   reservado a lo INTERACTIVO —selección y foco de teclado—, nunca al estado.
+   El estado se distingue por dentro: fondo blanco puro (el más luminoso de los
+   cuatro), badge, glifo y texto. */
+.available {
+  color: #14161a;
+  background: #ffffff;
+  border-color: #17704c;
+}
+
+.in_progress {
+  color: #14181c;
+  background: linear-gradient(90deg, #e6eef4 0 16%, #ffffff 16% 100%);
+  border-color: #4d7089;
+}
+
+.in_progress .code::before {
+  content: "";
+  display: inline-block;
+  width: 0.48rem;
+  height: 0.48rem;
+  margin-right: 0.35rem;
+  background: #245f86;
+  border-radius: 50%;
+}
+
+.completed {
+  color: #1e231f;
+  background: #eef4f0;
+  border-color: #a9b7ae;
+}
+
+.completed::after {
+  content: "\2713";
+  color: #3a7a57;
+  font-size: 1rem;
+}
+
+.courseCard[data-grouping="unal-cs-2024-mathematics"] {
+  border-top-width: 4px;
+  border-top-color: #2f6aa3;
+}
+
+.courseCard[data-grouping="unal-cs-2024-programming"] {
+  border-top-width: 4px;
+  border-top-color: #9c7a17;
+}
+
+.courseCard[data-grouping="unal-cs-2024-natural-sciences-statistics"] {
+  border-top-width: 4px;
+  border-top-color: #a83c74;
+}
+
+.courseCard[data-grouping="unal-cs-2024-algorithms-computing"] {
+  border-top-width: 4px;
+  border-top-color: #2e2566;
+}
+
+.courseCard[data-grouping="unal-cs-2024-scientific-computing"] {
+  border-top-width: 4px;
+  border-top-color: #9d5fc2;
+}
+
+.courseCard[data-grouping="unal-cs-2024-computer-systems"] {
+  border-top-width: 4px;
+  border-top-color: #226e77;
+}
+
+.courseCard[data-grouping="unal-cs-2024-applied-computing"] {
+  border-top-width: 4px;
+  border-top-color: #b34a1a;
+}
+
+.courseCard[data-grouping="unal-cs-2024-degree-work"] {
+  border-top-width: 4px;
+  border-top-color: #6b2430;
 }
 
 .selected {
@@ -289,11 +509,20 @@
   display: grid;
   gap: 0.25rem;
   padding: 0;
-  color: var(--ink);
+  color: inherit;
   text-align: left;
   background: transparent;
   border: 0;
   cursor: pointer;
+}
+
+/* Foco de teclado: outline exterior TEMPORAL, en el mismo azul interactivo que
+   `.selected` y `.detailPanel:focus-visible`. Antes el botón no declaraba
+   ninguno y quedaba a merced del outline por defecto del navegador. */
+.courseSelector:focus-visible {
+  outline: 3px solid #2266aa;
+  outline-offset: 2px;
+  border-radius: 0.3rem;
 }
 
 .courseSelector strong {
@@ -302,7 +531,7 @@
 }
 
 .code {
-  color: var(--muted);
+  color: #41474a;
   font-size: 0.75rem;
   font-weight: 800;
   letter-spacing: 0.04em;
@@ -313,29 +542,49 @@
   flex-wrap: wrap;
   gap: 0.3rem;
   margin-top: 0.6rem;
-  color: var(--muted);
+  color: #41474a;
   font-size: 0.72rem;
 }
 
 .facts > span {
   padding: 0.16rem 0.38rem;
-  background: #edf0ed;
+  background: #eef0ef;
   border-radius: 99rem;
 }
 
 .stateBadge[data-state="AVAILABLE"] {
-  color: #174f38;
-  background: #dcece4;
+  color: #12472f;
+  background: #d5eadf;
 }
 
 .stateBadge[data-state="IN_PROGRESS"] {
-  color: #164c7c;
-  background: #dceaf6;
+  color: #173f5c;
+  background: #d2e3ef;
 }
 
 .stateBadge[data-state="COMPLETED"] {
-  color: #4f317d;
-  background: #e9e0f4;
+  color: #294f39;
+  background: #d4e5da;
+}
+
+.stateBadge[data-state="BLOCKED"] {
+  color: #36423a;
+  background: #d8ddd9;
+}
+
+.blocked .code,
+.blocked .facts {
+  color: #474c49;
+}
+
+.in_progress .code,
+.in_progress .facts {
+  color: #2c343b;
+}
+
+.completed .code,
+.completed .facts {
+  color: #38443d;
 }
 
 .requirements {
@@ -471,17 +720,32 @@
   margin-bottom: 0;
 }
 
-@media (max-width: 72rem) and ((hover: none) or (pointer: coarse)) {
-  .dimmed {
-    opacity: 0.35;
-  }
-
+/* El panel NUNCA entra en el flujo del documento. Antes esta regla exigía
+   además puntero grueso, y eso abría un hueco: un viewport <= 72rem con mouse
+   o pen (desktop a media pantalla, tablet con puntero fino) no cumplía ni esta
+   condición ni la de `min-width: 72.001rem`, así que el panel caía en su regla
+   base —estática— y aterrizaba como segundo item del grid `.graphWorkspace`,
+   es decir DEBAJO de todo el grafo, lejísimos del nodo recién seleccionado.
+   Ahora el bottom sheet depende solo del ancho, así que la cobertura entre
+   ambos breakpoints es total y seleccionar no puede reflowear la página.
+   `max-height: 45vh` deja visible la mitad superior del viewport: la materia
+   seleccionada permanece en contexto detrás del panel. */
+@media (max-width: 72rem) {
   .detailPanel {
     position: fixed;
     z-index: 20;
     inset: auto 0 0;
     max-height: 45vh;
     overflow-y: auto;
+  }
+}
+
+/* Ajustes propios del puntero grueso: legibilidad al atenuar y área táctil
+   mínima. Siguen atados a touch a propósito — no aplican a desktop angosto,
+   que se maneja con mouse. */
+@media (max-width: 72rem) and ((hover: none) or (pointer: coarse)) {
+  .dimmed {
+    opacity: 0.35;
   }
 
   .detailHeader button,
@@ -509,6 +773,35 @@
     border: 1px solid rgb(35 55 44 / 18%);
     border-radius: 0.75rem;
     box-shadow: 0 1rem 2.5rem rgb(23 33 27 / 16%);
+    /* La superficie arrastrable es el panel entero: cabecera, padding, huecos
+       y chrome. El cursor lo anuncia en toda esa extensión. Solo aquí: en
+       <=72rem el panel es bottom sheet y no se mueve. */
+    cursor: grab;
+  }
+
+  /* Zonas que conservan interacción normal: texto de contenido y controles.
+     Recuperan el cursor por defecto para no prometer un arrastre que el guard
+     de `pointerdown` va a rechazar. */
+  .detailPanel [data-no-drag] {
+    cursor: auto;
+  }
+
+  .panelDragging {
+    cursor: grabbing;
+    user-select: none;
+  }
+
+  /* Grip discreto: rejilla 3x2 de puntos dibujada con un solo gradiente, sin
+     iconos ni caracteres cuyo render varíe entre plataformas. Comunica "esto
+     se mueve" sin competir con el título. */
+  .detailHeading::before {
+    content: "";
+    display: block;
+    width: 1.05rem;
+    height: 0.45rem;
+    margin-bottom: 0.4rem;
+    background-image: radial-gradient(circle, #b1bcb5 42%, transparent 46%);
+    background-size: 0.35rem 0.225rem;
   }
 }
 
@@ -534,6 +827,10 @@
     flex-wrap: wrap;
   }
 
+  .groupingLegendMobile {
+    min-width: 0;
+  }
+
   .columns {
     gap: 2.25rem;
   }
@@ -554,6 +851,33 @@
   .courseCard {
     min-height: 5rem;
     padding: 0.6rem;
+  }
+
+  .courseCard[data-grouping] {
+    border-top-width: 3px;
+  }
+
+  /* Variante COMPACTA del bottom sheet. Sigue siendo `fixed` y fuera del flujo
+     —hereda posición y `overflow-y: auto` del bloque de 72rem, que no se
+     toca—; solo reduce su presencia vertical, que a este ancho tapaba
+     demasiado. Fondo opaco porque el 92% translúcido del panel deja traslucir
+     el grafo justo donde queda menos espacio para leer. */
+  .detailPanel {
+    max-height: 35vh;
+    padding: 0.9rem 1rem;
+    padding-bottom: max(0.9rem, env(safe-area-inset-bottom));
+    background: #ffffff;
+  }
+
+  /* Al acortar el panel, su cabecera —y con ella el botón Cerrar— se saldría
+     de vista en cuanto el contenido scrollease. Anclada arriba queda siempre
+     accesible, y el resto del detalle pasa por debajo. */
+  .detailHeader {
+    position: sticky;
+    z-index: 1;
+    top: 0;
+    padding-bottom: 0.5rem;
+    background: #ffffff;
   }
 }
 
