@@ -9,6 +9,7 @@ import { unalCs2024Official } from "@sidera/curriculum-snapshot";
 import Link from "next/link";
 import {
   type CSSProperties,
+  type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
   useCallback,
   useEffect,
@@ -36,8 +37,47 @@ import {
   EXPLORER_NODE_DIAMETER_REM,
   type ExplorerLayout,
 } from "../lib/explorer-layout";
+import {
+  type ExplorerFilterEntry,
+  type ExplorerFilters,
+  deriveFilterFrontier,
+  type FilterFrontierKind,
+  filterEntries,
+  hasActiveFilters,
+  isFilterVisualMode,
+  resolveNodeProminence,
+  resolveFilterMatchHighlight,
+} from "../lib/explorer-filters";
 import { type Mark, useTrajectory } from "../lib/trajectory";
 import styles from "./explorar-view.module.css";
+
+/* Cuántas sugerencias se ofrecen bajo el buscador. Suficientes para elegir sin
+   convertir el desplegable en una segunda lista del plan. */
+const MAX_SUGGESTIONS = 8;
+
+const STATE_FILTER_OPTIONS: readonly DerivedCourseState[] = [
+  "AVAILABLE",
+  "IN_PROGRESS",
+  "COMPLETED",
+  "BLOCKED",
+];
+
+/* Copy de la frontera contextual. Nunca dice "desbloquea": que B sea destino
+   directo de A no garantiza que B quede disponible, porque puede tener otros
+   requisitos. Se anuncia como recorrido, no como resultado. */
+const frontierLabels: Record<FilterFrontierKind, string> = {
+  completed: "Camino siguiente desde una materia completada",
+  in_progress: "Camino siguiente desde una materia en curso",
+  available: "Camino siguiente desde una materia disponible",
+};
+
+/* Devuelve un conjunto nuevo con el valor alternado: los multiselect viven en
+   estado de React, así que nunca se mutan en sitio. */
+function toggleInSet<T>(source: ReadonlySet<T>, value: T): Set<T> {
+  const next = new Set(source);
+  if (!next.delete(value)) next.add(value);
+  return next;
+}
 
 const graph = buildCurriculumGraph(unalCs2024Official.versionCourses);
 const layouts = {
@@ -258,10 +298,15 @@ function Branches({
   variant,
   focus,
   states,
+  filterVisualMode,
 }: {
   variant: Variant;
   focus: FocusContext | null;
   states: ReadonlyMap<VersionCourseId, DerivedCourseState>;
+  /* En modo filtro las aristas y los stems se ocultan ENTEROS: el resultado se
+     lee en los nodos. Llega ya resuelto a `false` cuando hay materia enfocada,
+     así que aquí no se reimplementa la jerarquía. */
+  filterVisualMode: boolean;
 }) {
   const dimensions = geometry[variant];
   const stemSourceIds = [...outgoingById.entries()]
@@ -288,6 +333,10 @@ function Branches({
 
   return (
     <svg
+      /* Una sola bandera en el contenedor oculta los 73 paths y todos los
+         stems: sin recorrer elementos, sin tocar la geometría y sin sacar nada
+         del DOM. */
+      data-filter-mode={filterVisualMode ? "true" : undefined}
       className={styles.branches}
       viewBox={`0 0 ${dimensions.width} ${dimensions.height}`}
       width={`${dimensions.width}rem`}
@@ -300,11 +349,13 @@ function Branches({
           const relevance = strongestRelevance(
             graph.edges.filter((edge) => edge.sourceId === sourceId),
           );
+          /* El stem pertenece al nodo: si el filtro lo descarta, su
+             bifurcación se atenúa con él en vez de quedar colgando brillante. */
           return path ? (
             <path
               key={sourceId}
               d={path}
-              className={styles[relevance]}
+              className={`${styles[relevance]}`}
               data-stem-source={sourceId}
             />
           ) : null;
@@ -318,7 +369,7 @@ function Branches({
             <path
               key={`entry-${targetId}`}
               d={path}
-              className={styles[relevance]}
+              className={`${styles[relevance]}`}
               data-stem-target={targetId}
             />
           ) : null;
@@ -395,6 +446,158 @@ export function ExplorerView() {
     moved: boolean;
   } | null>(null);
   const suppressNextClickRef = useRef(false);
+
+  /* ── Toolbar: búsqueda y filtros ──────────────────────────────────────────
+     Todo el estado es local y efímero: no se persiste ni viaja en la URL. Los
+     filtros NUNCA tocan el layout ni el estado curricular; solo deciden qué se
+     atenúa. */
+  const [query, setQuery] = useState("");
+  const [stateFilter, setStateFilter] = useState<ReadonlySet<DerivedCourseState>>(
+    () => new Set(),
+  );
+  const [groupingFilter, setGroupingFilter] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const [openMenu, setOpenMenu] = useState<"state" | "grouping" | null>(null);
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+  const [activeSuggestion, setActiveSuggestion] = useState(-1);
+  const toolbarRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  /* Proyección plana para el helper puro. `states` cambia al marcar avance, así
+     que la entrada se recalcula con él. */
+  const filterEntriesSource: readonly ExplorerFilterEntry[] = useMemo(
+    () =>
+      unalCs2024Official.versionCourses.map((versionCourse) => ({
+        id: versionCourse.id,
+        name: coursesById.get(versionCourse.courseId)?.name ?? "",
+        academicCode: versionCourse.academicCode,
+        groupingId: versionCourse.groupingId,
+        groupingName: groupingsById.get(versionCourse.groupingId)?.name ?? "",
+        state: states.get(versionCourse.id) ?? "BLOCKED",
+      })),
+    [states],
+  );
+
+  const filters: ExplorerFilters = useMemo(
+    () => ({ query, states: stateFilter, groupings: groupingFilter }),
+    [query, stateFilter, groupingFilter],
+  );
+  const filtersActive = hasActiveFilters(filters);
+  const matchedIds = useMemo(
+    () =>
+      new Set(
+        filterEntries(filterEntriesSource, filters).map((entry) => entry.id),
+      ),
+    [filterEntriesSource, filters],
+  );
+
+  /* Las sugerencias respetan TODOS los filtros, no solo el texto: si el usuario
+     acotó por estado o agrupación, ofrecerle materias descartadas sería
+     incoherente con el árbol que está viendo. */
+  const suggestions = useMemo(() => {
+    if (query.trim() === "") return [];
+    return filterEntries(filterEntriesSource, filters).slice(0, MAX_SUGGESTIONS);
+  }, [filterEntriesSource, filters, query]);
+
+  const closeMenus = useCallback(() => {
+    setOpenMenu(null);
+    setSuggestionsOpen(false);
+    setActiveSuggestion(-1);
+  }, []);
+
+  /* Cierre por click fuera. El listener existe solo mientras hay algo abierto,
+     nunca de forma permanente. */
+  useEffect(() => {
+    if (!openMenu && !suggestionsOpen) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      const toolbar = toolbarRef.current;
+      if (!toolbar) return;
+      if (event.target instanceof Node && toolbar.contains(event.target)) return;
+      closeMenus();
+    };
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [openMenu, suggestionsOpen, closeMenus]);
+
+  /* Lleva una materia a la vista moviendo lo MÍNIMO: si ya se ve entera no se
+     toca el scroll, y si no, se corrige solo el desbordamiento. Respeta la
+     posición que el usuario haya elegido con el pan. */
+  const revealCourse = useCallback((id: VersionCourseId) => {
+    const region = regionRef.current;
+    const node = document.querySelector(`[data-version-course-id="${id}"]`);
+    if (!region || !(node instanceof HTMLElement)) return;
+    hasUserMovedRef.current = true;
+    const nodeBox = node.getBoundingClientRect();
+    const regionBox = region.getBoundingClientRect();
+    const margin = 24;
+
+    const overflowLeft = regionBox.left + margin - nodeBox.left;
+    const overflowRight = nodeBox.right - (regionBox.right - margin);
+    if (overflowLeft > 0) region.scrollLeft -= overflowLeft;
+    else if (overflowRight > 0) region.scrollLeft += overflowRight;
+
+    const overflowTop = margin - nodeBox.top;
+    const overflowBottom = nodeBox.bottom - (window.innerHeight - margin);
+    if (overflowTop > 0) window.scrollBy(0, -overflowTop);
+    else if (overflowBottom > 0) window.scrollBy(0, overflowBottom);
+  }, []);
+
+  /* Elegir una sugerencia usa la MISMA vía que hacer clic en un nodo: selecciona
+     y deja que el foco y el panel existentes hagan su trabajo. */
+  const chooseCourse = useCallback(
+    (id: VersionCourseId) => {
+      setSelectedId(id);
+      closeMenus();
+      /* Tras el re-render el nodo ya tiene su presencia final. */
+      requestAnimationFrame(() => revealCourse(id));
+    },
+    [closeMenus, revealCourse],
+  );
+
+  const handleSearchKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Escape") {
+      if (suggestionsOpen || openMenu) {
+        /* No dejar que llegue al `main`, que interpretaría Escape como "salir
+           del foco" y cerraría el panel de detalle. */
+        event.stopPropagation();
+        closeMenus();
+      }
+      return;
+    }
+    if (suggestions.length === 0) return;
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setSuggestionsOpen(true);
+      setActiveSuggestion((current) => (current + 1) % suggestions.length);
+      return;
+    }
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setSuggestionsOpen(true);
+      setActiveSuggestion((current) =>
+        current <= 0 ? suggestions.length - 1 : current - 1,
+      );
+      return;
+    }
+    if (event.key === "Enter") {
+      event.preventDefault();
+      /* Sin resaltado explícito, Enter resuelve la coincidencia única. */
+      const target =
+        suggestions[activeSuggestion] ??
+        (suggestions.length === 1 ? suggestions[0] : undefined);
+      if (target) chooseCourse(target.id as VersionCourseId);
+    }
+  };
+
+  const clearFilters = () => {
+    setQuery("");
+    setStateFilter(new Set());
+    setGroupingFilter(new Set());
+    closeMenus();
+    /* Deliberadamente NO se toca `selectedId`: limpiar filtros no debe cerrar
+       el panel de detalle que el usuario está leyendo. */
+  };
 
   /* Arrastre del panel de detalle. Solo desktop: en táctil manda el bottom
      sheet y su scroll nativo. El offset se descarta al cambiar de selección,
@@ -633,6 +836,36 @@ export function ExplorerView() {
     height: `${geometry[variant].height}rem`,
   };
 
+  /* JERARQUÍA VISUAL, en este orden estricto:
+       1. selección / foco  — manda siempre;
+       2. coincidencia de búsqueda y filtros;
+       3. atenuado por no coincidir.
+     De ahí que el atenuado por filtro solo se calcule cuando NO hay materia
+     seleccionada: bajo foco, el árbol ya habla el lenguaje de unlock /
+     prerequisite / future / unrelated, y superponerle un segundo atenuado
+     produciría nodos doblemente apagados e ilegibles. Los filtros no se
+     pierden —la toolbar sigue mostrando el recuento— y al salir del foco la
+     vista filtrada vuelve intacta. */
+  const filterVisualMode = isFilterVisualMode({
+    filtersActive,
+    hasSelection: selectedId !== null,
+  });
+
+  /* Frontera contextual: destinos DIRECTOS de las materias que coinciden, para
+     que una arista visible no muera en un nodo apagado. Es contexto de
+     recorrido, no una promesa de desbloqueo. Se apaga sola bajo foco porque
+     comparte la misma puerta `filterVisualMode`. */
+  const frontier = useMemo(
+    () =>
+      deriveFilterFrontier({
+        entries: filterEntriesSource,
+        edges: graph.edges,
+        matchedIds,
+        active: filterVisualMode,
+      }),
+    [filterEntriesSource, matchedIds, filterVisualMode],
+  );
+
   return (
     <main className={styles.page} onKeyDown={(event) => {
       if (event.key === "Escape") setSelectedId(null);
@@ -680,6 +913,196 @@ export function ExplorerView() {
         ) : null}
       </section>
 
+      {/* Barra de herramientas del mapa. Vive fuera de la región del árbol, así
+          que abrir un menú nunca desplaza ni recalcula el lienzo. */}
+      <div
+        ref={toolbarRef}
+        className={styles.toolbar}
+        role="search"
+        onKeyDown={(event) => {
+          if (event.key !== "Escape") return;
+          if (!openMenu && !suggestionsOpen) return;
+          event.stopPropagation();
+          closeMenus();
+          searchInputRef.current?.focus();
+        }}
+      >
+        <div className={styles.searchField}>
+          <label htmlFor="explorer-search" className={styles.visuallyHidden}>
+            Buscar materia por nombre, código o agrupación
+          </label>
+          <input
+            id="explorer-search"
+            ref={searchInputRef}
+            type="search"
+            className={styles.searchInput}
+            placeholder="Buscar materia…"
+            value={query}
+            autoComplete="off"
+            role="combobox"
+            aria-expanded={suggestionsOpen && suggestions.length > 0}
+            /* El listado solo existe en el DOM mientras hay sugerencias, así
+               que `aria-controls` no puede apuntar siempre a su id: una
+               referencia IDREF rota confunde a los lectores de pantalla. */
+            aria-controls={
+              suggestionsOpen && suggestions.length > 0
+                ? "explorer-suggestions"
+                : undefined
+            }
+            aria-autocomplete="list"
+            aria-activedescendant={
+              activeSuggestion >= 0 && suggestions[activeSuggestion]
+                ? `explorer-suggestion-${suggestions[activeSuggestion].id}`
+                : undefined
+            }
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setSuggestionsOpen(true);
+              setActiveSuggestion(-1);
+              setOpenMenu(null);
+            }}
+            onFocus={() => {
+              if (query.trim() !== "") setSuggestionsOpen(true);
+            }}
+            onKeyDown={handleSearchKeyDown}
+          />
+          {suggestionsOpen && suggestions.length > 0 ? (
+            <ul
+              id="explorer-suggestions"
+              className={styles.suggestions}
+              role="listbox"
+              aria-label="Materias encontradas"
+            >
+              {suggestions.map((suggestion, index) => (
+                <li
+                  key={suggestion.id}
+                  id={`explorer-suggestion-${suggestion.id}`}
+                  role="option"
+                  aria-selected={index === activeSuggestion}
+                  className={index === activeSuggestion ? styles.suggestionActive : ""}
+                  /* `pointerdown` en vez de `click`: el input pierde el foco
+                     antes del click y el listado se cerraría primero. */
+                  onPointerDown={(event) => {
+                    event.preventDefault();
+                    chooseCourse(suggestion.id as VersionCourseId);
+                  }}
+                  onMouseEnter={() => setActiveSuggestion(index)}
+                >
+                  <strong>{suggestion.name}</strong>
+                  <span>
+                    {suggestion.academicCode} · {suggestion.groupingName}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+
+        <div className={styles.filterGroup}>
+          <button
+            type="button"
+            className={styles.filterTrigger}
+            aria-expanded={openMenu === "state"}
+            aria-haspopup="true"
+            data-active={stateFilter.size > 0 ? "true" : undefined}
+            onClick={() => {
+              setOpenMenu((current) => (current === "state" ? null : "state"));
+              /* Al cerrar el listado hay que soltar también el índice activo:
+                 si no, cambiar un filtro reordena las sugerencias y al reabrir
+                 quedaría resaltada —y elegible con Enter— una materia que el
+                 usuario nunca señaló. */
+              setSuggestionsOpen(false);
+              setActiveSuggestion(-1);
+            }}
+          >
+            Estado
+            {stateFilter.size > 0 ? <b>{stateFilter.size}</b> : null}
+            <span aria-hidden="true">▾</span>
+          </button>
+          {openMenu === "state" ? (
+            <div className={styles.filterMenu} role="group" aria-label="Filtrar por estado">
+              {STATE_FILTER_OPTIONS.map((state) => (
+                <label key={state}>
+                  <input
+                    type="checkbox"
+                    checked={stateFilter.has(state)}
+                    onChange={() =>
+                      setStateFilter((current) => toggleInSet(current, state))
+                    }
+                  />
+                  {stateLabels[state]}
+                </label>
+              ))}
+            </div>
+          ) : null}
+        </div>
+
+        <div className={styles.filterGroup}>
+          <button
+            type="button"
+            className={styles.filterTrigger}
+            aria-expanded={openMenu === "grouping"}
+            aria-haspopup="true"
+            data-active={groupingFilter.size > 0 ? "true" : undefined}
+            onClick={() => {
+              setOpenMenu((current) =>
+                current === "grouping" ? null : "grouping",
+              );
+              setSuggestionsOpen(false);
+              setActiveSuggestion(-1);
+            }}
+          >
+            Agrupación
+            {groupingFilter.size > 0 ? <b>{groupingFilter.size}</b> : null}
+            <span aria-hidden="true">▾</span>
+          </button>
+          {openMenu === "grouping" ? (
+            <div
+              className={`${styles.filterMenu} ${styles.groupingMenu}`}
+              role="group"
+              aria-label="Filtrar por agrupación curricular"
+            >
+              {unalCs2024Official.groupings.map((grouping) => (
+                <label key={grouping.id}>
+                  <input
+                    type="checkbox"
+                    checked={groupingFilter.has(grouping.id)}
+                    onChange={() =>
+                      setGroupingFilter((current) =>
+                        toggleInSet(current, grouping.id),
+                      )
+                    }
+                  />
+                  {/* El swatch reutiliza el color de agrupación del árbol. */}
+                  <i
+                    className={styles.groupingSwatch}
+                    data-grouping={grouping.id}
+                    aria-hidden="true"
+                  />
+                  {grouping.name}
+                </label>
+              ))}
+            </div>
+          ) : null}
+        </div>
+
+        {filtersActive ? (
+          <button
+            type="button"
+            className={styles.clearFilters}
+            onClick={clearFilters}
+          >
+            Limpiar
+          </button>
+        ) : null}
+
+        <p className={styles.resultCount} aria-live="polite">
+          {filtersActive
+            ? `${matchedIds.size} de ${filterEntriesSource.length} materias`
+            : `${filterEntriesSource.length} materias`}
+        </p>
+      </div>
+
       {graph.cycles.length > 0 ? (
         <p className={styles.error}>No se puede representar un currículo con ciclos.</p>
       ) : (
@@ -701,7 +1124,12 @@ export function ExplorerView() {
           >
             <div className={styles.canvasFrame}>
               <div className={styles.canvas} style={canvasStyle}>
-                <Branches variant={variant} focus={focus} states={states} />
+                <Branches
+                  variant={variant}
+                  focus={focus}
+                  states={states}
+                  filterVisualMode={filterVisualMode}
+                />
               <div className={styles.nodes}>
                 {unalCs2024Official.versionCourses.map((versionCourse) => {
                   const course = coursesById.get(versionCourse.courseId);
@@ -713,23 +1141,45 @@ export function ExplorerView() {
                       type="button"
                       key={versionCourse.id}
                       style={nodeStyle(versionCourse.id, variant)}
+                      data-version-course-id={versionCourse.id}
                       data-grouping={versionCourse.groupingId}
                       data-state={state}
                       data-relevance={relevance}
+                      data-prominence={resolveNodeProminence({
+                        filtersActive: filterVisualMode,
+                        matched: matchedIds.has(versionCourse.id),
+                        frontier: frontier.has(versionCourse.id),
+                      })}
+                      /* "Puedes cursarla ahora": match real Y disponible. La
+                         condición vive completa en el helper, no repartida
+                         entre atributos del CSS. */
+                      data-match-highlight={
+                        resolveFilterMatchHighlight({
+                          filterVisualMode,
+                          matched: matchedIds.has(versionCourse.id),
+                          state,
+                        }) ?? undefined
+                      }
                       className={`${styles.node} ${selected ? styles.selected : ""}`}
                       onClick={() => setSelectedId(selected ? null : versionCourse.id)}
                       aria-pressed={selected}
-                      aria-label={`${course?.name ?? versionCourse.academicCode}. ${stateLabels[state]}. Enfocar relaciones`}
+                      aria-label={`${course?.name ?? versionCourse.academicCode}. ${stateLabels[state]}.${
+                        frontier.has(versionCourse.id)
+                          ? ` ${frontierLabels[frontier.get(versionCourse.id)!]}.`
+                          : ""
+                      } Enfocar relaciones`}
                     >
                       <span className={styles.medallion}>
+                        {/* AVAILABLE e IN_PROGRESS comparten el rombo base; a
+                            "en curso" lo distingue una barra corta añadida por
+                            CSS. BLOCKED no lleva texto: su candado se dibuja
+                            con pseudo-elementos. */}
                         <span className={styles.glyph} aria-hidden="true">
                           {state === "COMPLETED"
                             ? "✓"
-                            : state === "IN_PROGRESS"
-                              ? "●"
-                              : state === "AVAILABLE"
-                                ? "◆"
-                                : "·"}
+                            : state === "BLOCKED"
+                              ? ""
+                              : "◆"}
                         </span>
                       </span>
                       <strong>{course?.name ?? "Materia sin nombre"}</strong>
