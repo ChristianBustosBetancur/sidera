@@ -40,6 +40,16 @@
   color: #d7e9df;
 }
 
+/* Contenedor común de los enlaces de vista. Sin esta regla el `<nav>` era un
+   bloque normal y sus dos enlaces `inline-flex` quedaban separados únicamente
+   por el espacio de texto del JSX, que se lee como "pegados". El gap vive en
+   el contenedor, no en márgenes de cada enlace. */
+.header nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
 .header a {
   display: inline-flex;
   flex: none;
@@ -407,13 +417,16 @@
   border-radius: 0.2rem 0.2rem 0 0;
 }
 
+/* Un solo perímetro por tarjeta. AVAILABLE llevaba `outline` + `outline-offset`
+   sobre el borde propio de la card: el offset abría un hueco entre ambos y el
+   resultado se leía como una tarjeta dentro de otra. El outline exterior queda
+   reservado a lo INTERACTIVO —selección y foco de teclado—, nunca al estado.
+   El estado se distingue por dentro: fondo blanco puro (el más luminoso de los
+   cuatro), badge, glifo y texto. */
 .available {
   color: #14161a;
   background: #ffffff;
   border-color: #17704c;
-  outline: 3px solid #17704c;
-  outline-offset: 1px;
-  box-shadow: 0 2px 6px rgb(23 112 76 / 16%);
 }
 
 .in_progress {
@@ -501,6 +514,15 @@
   background: transparent;
   border: 0;
   cursor: pointer;
+}
+
+/* Foco de teclado: outline exterior TEMPORAL, en el mismo azul interactivo que
+   `.selected` y `.detailPanel:focus-visible`. Antes el botón no declaraba
+   ninguno y quedaba a merced del outline por defecto del navegador. */
+.courseSelector:focus-visible {
+  outline: 3px solid #2266aa;
+  outline-offset: 2px;
+  border-radius: 0.3rem;
 }
 
 .courseSelector strong {
@@ -698,17 +720,32 @@
   margin-bottom: 0;
 }
 
-@media (max-width: 72rem) and ((hover: none) or (pointer: coarse)) {
-  .dimmed {
-    opacity: 0.35;
-  }
-
+/* El panel NUNCA entra en el flujo del documento. Antes esta regla exigía
+   además puntero grueso, y eso abría un hueco: un viewport <= 72rem con mouse
+   o pen (desktop a media pantalla, tablet con puntero fino) no cumplía ni esta
+   condición ni la de `min-width: 72.001rem`, así que el panel caía en su regla
+   base —estática— y aterrizaba como segundo item del grid `.graphWorkspace`,
+   es decir DEBAJO de todo el grafo, lejísimos del nodo recién seleccionado.
+   Ahora el bottom sheet depende solo del ancho, así que la cobertura entre
+   ambos breakpoints es total y seleccionar no puede reflowear la página.
+   `max-height: 45vh` deja visible la mitad superior del viewport: la materia
+   seleccionada permanece en contexto detrás del panel. */
+@media (max-width: 72rem) {
   .detailPanel {
     position: fixed;
     z-index: 20;
     inset: auto 0 0;
     max-height: 45vh;
     overflow-y: auto;
+  }
+}
+
+/* Ajustes propios del puntero grueso: legibilidad al atenuar y área táctil
+   mínima. Siguen atados a touch a propósito — no aplican a desktop angosto,
+   que se maneja con mouse. */
+@media (max-width: 72rem) and ((hover: none) or (pointer: coarse)) {
+  .dimmed {
+    opacity: 0.35;
   }
 
   .detailHeader button,
@@ -736,6 +773,35 @@
     border: 1px solid rgb(35 55 44 / 18%);
     border-radius: 0.75rem;
     box-shadow: 0 1rem 2.5rem rgb(23 33 27 / 16%);
+    /* La superficie arrastrable es el panel entero: cabecera, padding, huecos
+       y chrome. El cursor lo anuncia en toda esa extensión. Solo aquí: en
+       <=72rem el panel es bottom sheet y no se mueve. */
+    cursor: grab;
+  }
+
+  /* Zonas que conservan interacción normal: texto de contenido y controles.
+     Recuperan el cursor por defecto para no prometer un arrastre que el guard
+     de `pointerdown` va a rechazar. */
+  .detailPanel [data-no-drag] {
+    cursor: auto;
+  }
+
+  .panelDragging {
+    cursor: grabbing;
+    user-select: none;
+  }
+
+  /* Grip discreto: rejilla 3x2 de puntos dibujada con un solo gradiente, sin
+     iconos ni caracteres cuyo render varíe entre plataformas. Comunica "esto
+     se mueve" sin competir con el título. */
+  .detailHeading::before {
+    content: "";
+    display: block;
+    width: 1.05rem;
+    height: 0.45rem;
+    margin-bottom: 0.4rem;
+    background-image: radial-gradient(circle, #b1bcb5 42%, transparent 46%);
+    background-size: 0.35rem 0.225rem;
   }
 }
 
@@ -789,6 +855,29 @@
 
   .courseCard[data-grouping] {
     border-top-width: 3px;
+  }
+
+  /* Variante COMPACTA del bottom sheet. Sigue siendo `fixed` y fuera del flujo
+     —hereda posición y `overflow-y: auto` del bloque de 72rem, que no se
+     toca—; solo reduce su presencia vertical, que a este ancho tapaba
+     demasiado. Fondo opaco porque el 92% translúcido del panel deja traslucir
+     el grafo justo donde queda menos espacio para leer. */
+  .detailPanel {
+    max-height: 35vh;
+    padding: 0.9rem 1rem;
+    padding-bottom: max(0.9rem, env(safe-area-inset-bottom));
+    background: #ffffff;
+  }
+
+  /* Al acortar el panel, su cabecera —y con ella el botón Cerrar— se saldría
+     de vista en cuanto el contenido scrollease. Anclada arriba queda siempre
+     accesible, y el resto del detalle pasa por debajo. */
+  .detailHeader {
+    position: sticky;
+    z-index: 1;
+    top: 0;
+    padding-bottom: 0.5rem;
+    background: #ffffff;
   }
 }
 
