@@ -48,7 +48,13 @@ Estado de una materia para un estudiante concreto: bloqueada, disponible, en cur
 
 ## Progreso
 
-Medida del avance del estudiante frente a un plan curricular (versión específica), derivada de sus materias aprobadas/en curso y las reglas del plan.
+Medida del avance del estudiante frente a un plan curricular (versión específica), derivada de sus materias y de las reglas del plan.
+
+Solo los créditos de materias **aprobadas** cuentan como progreso satisfecho. Una materia **en curso** todavía no lo es: sus créditos se contabilizan aparte y no forman parte del avance satisfecho. La distinción se mantiene en todo el sistema, incluida la presentación.
+
+## Progreso proyectado
+
+Avance que resultaría si el estudiante aprobara todo lo que tiene en curso. Es una proyección explícita y separada del progreso satisfecho; nunca lo sustituye.
 
 ## Snapshot
 

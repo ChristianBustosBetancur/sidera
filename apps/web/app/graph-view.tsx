@@ -22,7 +22,6 @@ import {
   blockingReasons,
   coursesById,
   evaluationContext,
-  planVersionStatus,
   requirementLines,
   versionCoursesById,
 } from "../lib/curriculum-data";
@@ -453,23 +452,11 @@ export function GraphView() {
         setSelectedId(null);
       }}
     >
+      {/* Solo el nombre de la herramienta: universidad, acuerdo, procedencia y
+          estado del plan ya viven en la barra global de contexto, y la leyenda
+          de abajo explica cómo leer el grafo. */}
       <header className={styles.header}>
-        <div>
-          <p>{unalCs2024Official.university.name}</p>
-          <h1>Grafo de prerrequisitos y correquisitos</h1>
-          <span>
-            {unalCs2024Official.planVersion.name} ·{" "}
-            {planVersionStatus(
-              unalCs2024Official.planVersion.provenance,
-              unalCs2024Official.planVersion.lifecycle,
-            )}
-          </span>
-          <span>
-            {unalCs2024Official.versionCourses.length} materias incluidas en el
-            dataset curado, organizadas por profundidad de sus relaciones
-            directas.
-          </span>
-        </div>
+        <h1>Mapa de Prerrequisitos</h1>
       </header>
 
       <section className={styles.controls} aria-label="Leyenda e instrucciones">

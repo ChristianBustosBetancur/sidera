@@ -872,8 +872,7 @@ export function ExplorerView() {
       <header className={styles.header}>
         <div>
           <p>Mapa curricular interactivo</p>
-          <h1>Explora tu árbol de habilidades</h1>
-          <span>De los fundamentos a las ramas avanzadas del programa.</span>
+          <h1>Trayectoria Curricular</h1>
         </div>
       </header>
 

@@ -21,6 +21,29 @@ La raíz conceptual institucional es `University`: de ella dependen `AcademicPro
 - `packages/curriculum-importer` — importación CSV/Excel.
 - `packages/database` — acceso a datos y contratos de persistencia.
 
+## Composición de la interfaz de estudiante
+
+`Root layout → AppShell → navegación + PlanContextBar + contenido de ruta`
+
+El shell centraliza la navegación global, la resolución de la ruta activa, la barra lateral de escritorio, el panel lateral de táctil y la barra de contexto y progreso. Las vistas no implementan navegación global propia ni repiten el contexto institucional del plan: cada una comunica su función.
+
+Los nombres visibles y los nombres técnicos no coinciden, y no es necesario que lo hagan. `Mapa de Prerrequisitos` se sirve desde `/grafo` y `Trayectoria Curricular` desde `/explorar`; los archivos y componentes conservan sus nombres técnicos.
+
+### PlanContextBar
+
+- Consume el mismo estado de trayectoria que las vistas, mediante el proveedor compartido.
+- Reutiliza los helpers de progreso existentes en lugar de recalcular reglas curriculares, de modo que no introduce una segunda fuente de verdad.
+- Mantiene separados los créditos aprobados de los que están en curso: el porcentaje y la barra representan únicamente lo aprobado.
+- Es `sticky`, no `fixed`: permanece dentro del flujo del documento, del que dependen las medidas de viewport y el desplazamiento programático que usa Trayectoria Curricular.
+
+### Trayectoria Curricular
+
+- El plan se representa como un grafo dirigido acíclico real, con varias raíces.
+- La profundidad visual se deriva de forma independiente del nivel lógico cuando la estructura lo requiere.
+- Las aristas y las bifurcaciones se dibujan en SVG; los nodos son elementos HTML posicionados sobre el mismo sistema de coordenadas.
+- Los filtros no recalculan el layout ni reordenan el plan: los nodos permanecen en el DOM y solo cambia su presentación.
+- El foco sobre una materia seleccionada domina sobre la presentación de los filtros; ambos sistemas no se superponen.
+
 ## Principios de separación
 
 - Los datos curriculares nunca se escriben directamente dentro de componentes visuales.

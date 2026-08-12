@@ -20,7 +20,6 @@
 
 .header p,
 .header h1,
-.header span,
 .instructions p,
 .detail p {
   margin: 0;
@@ -36,13 +35,9 @@
 }
 
 .header h1 {
-  margin: 0 0 0.45rem;
+  margin: 0;
   font-size: clamp(1.8rem, 4vw, 3.25rem);
   line-height: 1.04;
-}
-
-.header span {
-  color: #d5e8df;
 }
 
 .instructions {
