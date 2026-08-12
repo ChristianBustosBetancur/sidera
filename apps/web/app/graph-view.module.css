@@ -14,30 +14,15 @@
   border-radius: 1.2rem;
 }
 
-.header p,
 .header h1,
-.header span,
 .controls p,
 .levelColumn > p {
   margin: 0;
 }
 
-.header p {
-  margin-bottom: 0.4rem;
-  font-size: 0.76rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
 .header h1 {
-  margin-bottom: 0.7rem;
   font-size: clamp(1.8rem, 4vw, 3.5rem);
   line-height: 1.08;
-}
-
-.header span {
-  color: #d7e9df;
 }
 
 .controls {

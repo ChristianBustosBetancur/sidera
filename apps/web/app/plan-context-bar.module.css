@@ -1,0 +1,140 @@
+/* ── Barra de contexto y progreso ──────────────────────────────────────────
+   `sticky`, nunca `fixed`: sigue perteneciendo al flujo del shell, del que
+   dependen las medidas de viewport, `window.scrollTo` y los
+   `getBoundingClientRect` con que /explorar hace pan y revela materias. Un
+   `fixed` la sacaría del flujo y falsearía esos cálculos.
+
+   z-index 15, elegido contra la escala existente: por encima del contenido del
+   lienzo (1–3), de la toolbar de /explorar (5) y del distintivo de preview
+   (10); por debajo de los paneles de detalle y bottom sheets (20), de los menús
+   de la toolbar (30), de la cabecera táctil (40) y del drawer (100/101). Así
+   acompaña al scroll sin taparle nada a lo que debe estar encima.
+
+   El fondo es `--surface`, completamente opaco, para que el contenido no se lea
+   por detrás al desplazarse. Sin blur y sin animación.
+
+   Una sola fila cuando cabe; `flex-wrap` la parte en dos sin media queries
+   propias y sin provocar desbordamiento horizontal. */
+.bar {
+  position: sticky;
+  z-index: 15;
+  top: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.4rem 1.5rem;
+  align-items: center;
+  padding: 0.55rem clamp(0.75rem, 3vw, 3rem);
+  padding-right: max(clamp(0.75rem, 3vw, 3rem), env(safe-area-inset-right));
+  padding-left: max(clamp(0.75rem, 3vw, 3rem), env(safe-area-inset-left));
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+
+.context {
+  margin: 0;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.context strong {
+  color: var(--ink);
+  font-weight: 850;
+}
+
+.progress {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.7rem;
+  align-items: center;
+}
+
+.credits {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.credits strong {
+  color: var(--ink);
+  font-weight: 850;
+}
+
+.percent {
+  margin-left: 0.5rem;
+  color: var(--brand);
+  font-weight: 900;
+}
+
+/* Carril de anchura fija y contenida: en pantallas anchas no se estira hasta
+   dominar la barra, y en estrechas cede el sitio al texto. */
+.track {
+  width: clamp(5rem, 14vw, 9rem);
+  height: 0.45rem;
+  flex: none;
+  overflow: hidden;
+  background: #e3e9e5;
+  border: 1px solid var(--line);
+  border-radius: 99rem;
+}
+
+/* Solo créditos completados. Sin transición: el valor cambia al marcar una
+   materia y una animación aquí no aporta información.
+   El ancho llega ya redondeado y acotado a 0–100 desde el helper, así que 0% y
+   100% se representan correctamente y un total de 0 créditos no puede producir
+   un ancho inválido. */
+.fill {
+  display: block;
+  height: 100%;
+  background: var(--brand);
+  border-radius: 99rem;
+}
+
+.inProgress {
+  margin: 0;
+  padding: 0.05rem 0.45rem;
+  color: #7a5410;
+  background: var(--elective-soft);
+  border-radius: 99rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+/* Por debajo del umbral del shell la cabecera táctil ocupa la franja superior,
+   así que la barra se ancla justo bajo ella en lugar de solaparse. El valor sale
+   de `--app-topbar-height`, declarado por el propio shell: no hay distancia
+   arbitraria que pueda quedar desincronizada. Mismo breakpoint (64rem) que usa
+   el shell para alternar sidebar y cabecera. */
+@media (max-width: 64rem) {
+  .bar {
+    top: var(--app-topbar-height);
+  }
+}
+
+/* Muy estrecho: el contexto pasa a ocupar su propia línea y el progreso se
+   alinea a la izquierda, en lugar de quedar separado por un hueco enorme. */
+@media (max-width: 42rem) {
+  .bar {
+    justify-content: flex-start;
+    gap: 0.35rem 0.6rem;
+  }
+
+  .context {
+    flex-basis: 100%;
+    font-size: 0.8rem;
+  }
+
+  /* El nombre del acuerdo es la información menos crítica: cede primero,
+     recortándose con puntos suspensivos en lugar de desbordar. */
+  .planName {
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: bottom;
+    white-space: nowrap;
+  }
+}

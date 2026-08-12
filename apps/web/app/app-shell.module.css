@@ -8,6 +8,12 @@
    mide posiciones con `getBoundingClientRect`, y sacarlas del flujo alteraría
    ese sistema. `sticky` conserva el flujo y mantiene la navegación a la vista. */
 .shell {
+  /* Altura real de la cabecera táctil, incluido su borde inferior. Se declara
+     aquí, en el ancestro común, para que la barra de contexto pueda anclarse
+     justo debajo sin repetir el número: las custom properties se heredan por
+     el DOM, así que cruza módulos CSS sin acoplarlos. */
+  --app-topbar-height: calc(3.75rem + 1px);
+
   display: flex;
   min-height: 100vh;
   align-items: flex-start;
@@ -143,11 +149,15 @@
   min-height: 2.75rem;
   gap: 0.7rem;
   align-items: center;
-  padding: 0 0.65rem;
+  padding: 0.35rem 0.65rem;
   color: var(--ink);
   border-radius: 0.55rem;
   font-size: 0.92rem;
   font-weight: 750;
+  /* "Mapa de Prerrequisitos" no cabe en una línea con la sidebar expandida:
+     el interlineado ajustado deja que envuelva en dos sin apelotonarse, y el
+     padding vertical evita que el texto toque el borde al crecer. */
+  line-height: 1.2;
   text-decoration: none;
 }
 
@@ -223,6 +233,9 @@
   z-index: 40;
   top: 0;
   display: none;
+  /* Fija la altura que anuncia `--app-topbar-height`, de modo que el anclaje de
+     la barra de contexto no pueda desincronizarse del valor real. */
+  min-height: var(--app-topbar-height);
   gap: 0.6rem;
   align-items: center;
   padding: 0.5rem max(0.75rem, env(safe-area-inset-left)) 0.5rem

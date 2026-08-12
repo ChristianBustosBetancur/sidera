@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import styles from "./app-shell.module.css";
+import { PlanContextBar } from "./plan-context-bar";
 
 /* Solo rutas que existen. No se añaden destinos futuros —Progreso, Logros,
    Calendario— como botones inertes: un enlace que no lleva a ninguna parte es
@@ -28,7 +29,7 @@ const NAV_ITEMS: readonly NavItem[] = [
   },
   {
     href: "/grafo",
-    label: "Grafo",
+    label: "Mapa de Prerrequisitos",
     icon: (
       <>
         <circle cx="5" cy="5.5" r="2" />
@@ -40,7 +41,7 @@ const NAV_ITEMS: readonly NavItem[] = [
   },
   {
     href: "/explorar",
-    label: "Explorar",
+    label: "Trayectoria Curricular",
     icon: (
       <>
         <circle cx="10" cy="4.5" r="2" />
@@ -251,7 +252,10 @@ export function AppShell({ children }: { children: ReactNode }) {
         </>
       ) : null}
 
+      {/* El shell compone: navegación, contexto y ruta. La barra se declara una
+          sola vez aquí y las tres vistas la reciben sin implementarla. */}
       <div className={styles.content} id="contenido-principal" tabIndex={-1}>
+        <PlanContextBar />
         {children}
       </div>
     </div>
