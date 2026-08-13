@@ -16,7 +16,6 @@
 }
 
 .eyebrow,
-.componentHeading p,
 .progressCard p {
   margin: 0 0 0.45rem;
   font-size: 0.76rem;
@@ -248,13 +247,49 @@
   min-width: 0;
 }
 
+/* El encabezado es un <button> real, así que se le retiran los estilos
+   nativos y se conserva exactamente la composición anterior. `width: 100%` y
+   `text-align: left` evitan el centrado que el navegador aplica por defecto. */
 .componentHeading {
   display: flex;
+  width: 100%;
   flex-wrap: wrap;
   gap: 0.3rem 1rem;
   align-items: baseline;
-  padding-bottom: 1rem;
+  padding: 0 0 1rem;
+  color: inherit;
+  background: none;
+  border: 0;
   border-bottom: 2px solid var(--brand);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.componentHeading:hover h2 {
+  color: var(--brand);
+}
+
+/* El chevron se empuja al extremo y gira al plegar: la dirección indica la
+   acción sin depender del color. */
+.componentChevron {
+  width: 1.4rem;
+  height: 1.4rem;
+  flex: none;
+  margin-left: auto;
+  align-self: center;
+  color: var(--brand);
+  transition: transform 140ms ease;
+}
+
+.componentHeading[aria-expanded="false"] .componentChevron {
+  transform: rotate(-90deg);
+}
+
+/* Los créditos no deben partirse ni empujar al chevron fuera de la fila. */
+.componentCredits {
+  flex: none;
+  white-space: nowrap;
 }
 
 .component > .progressBar {
@@ -297,11 +332,6 @@
   color: var(--muted);
   font-size: 0.86rem;
   line-height: 1.45;
-}
-
-.componentHeading p {
-  flex-basis: 100%;
-  color: var(--brand);
 }
 
 .componentHeading h2 {
@@ -559,6 +589,12 @@
   .progressInProgress,
   .progressStageMastered .progressCompleted::after {
     animation: none;
+  }
+
+  /* El plegado sigue funcionando; solo deja de interpolarse el giro. La
+     dirección del chevron se conserva, así que no se pierde información. */
+  .componentChevron {
+    transition: none;
   }
 
 }

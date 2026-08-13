@@ -44,6 +44,20 @@ Los nombres visibles y los nombres técnicos no coinciden, y no es necesario que
 - Los filtros no recalculan el layout ni reordenan el plan: los nodos permanecen en el DOM y solo cambia su presentación.
 - El foco sobre una materia seleccionada domina sobre la presentación de los filtros; ambos sistemas no se superponen.
 
+### Reconciliación de trayectoria
+
+Vive en `packages/curriculum-engine` como función pura, no en la capa de React: recibe la trayectoria, el cambio solicitado y el contexto curricular, y devuelve la trayectoria resultante junto con las materias retiradas y las incoherencias detectadas.
+
+Recorre las materias marcadas hasta alcanzar un punto fijo. Cada ronda solo retira marcas, nunca las añade, de modo que el proceso termina siempre y su resultado no depende del orden de recorrido.
+
+No propaga por las aristas del grafo, y es una decisión deliberada: las aristas representan dependencias entre materias, pero no los requisitos agregados por créditos o por número de materias de una agrupación. Reevaluar cada materia marcada con el evaluador real cubre también esos umbrales, las alternativas y los correquisitos sin reimplementar su semántica.
+
+Como es pura, el mismo cálculo sirve para anticipar el impacto de un cambio antes de aplicarlo.
+
+El proveedor de trayectoria es el único coordinador en la capa de React y sigue siempre la misma secuencia: previsualizar, confirmar si hace falta, aplicar. Cuando un cambio no retira ninguna materia en curso se aplica de inmediato; cuando retira alguna, la reconciliación previsualizada queda en espera y se aplica **tal cual** al confirmar, sin recalcularse, de modo que el resultado coincide con el que se mostró.
+
+El diálogo de confirmación lo renderiza el propio proveedor, no cada vista. Las tres superficies que permiten marcar materias comparten así una única política sin implementar nada, y ninguna contiene lógica académica: se limitan a consumir lo que el motor ya calculó.
+
 ## Principios de separación
 
 - Los datos curriculares nunca se escriben directamente dentro de componentes visuales.

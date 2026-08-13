@@ -52,6 +52,16 @@ Medida del avance del estudiante frente a un plan curricular (versión específi
 
 Solo los créditos de materias **aprobadas** cuentan como progreso satisfecho. Una materia **en curso** todavía no lo es: sus créditos se contabilizan aparte y no forman parte del avance satisfecho. La distinción se mantiene en todo el sistema, incluida la presentación.
 
+## Reconciliación de la trayectoria
+
+Editar la trayectoria puede dejar otras materias marcadas sin sustento académico. Sidera distingue dos situaciones con políticas distintas.
+
+**Materias en curso.** Describen el presente del estudiante, así que deben satisfacer sus requisitos bajo la trayectoria resultante. Si dejan de hacerlo se retiran automáticamente, y esa retirada puede arrastrar a otras materias en curso.
+
+**Materias aprobadas.** Describen el historial y **no se retiran nunca de forma automática**. La trayectoria es un conjunto sin orden temporal: no registra semestres ni fechas, de modo que no puede distinguirse si el estudiante cursó una materia antes de perder ese requisito o si simplemente está corrigiendo su historial. Retirarla sería una conclusión más fuerte de lo que el modelo puede justificar. Cuando una materia aprobada deja de ser elegible bajo la foto actual, la incoherencia queda detectada internamente; hoy no interrumpe al estudiante, porque no hay ninguna decisión que deba tomar: nada se retira.
+
+Los estados disponible y bloqueada no participan: son derivados y se recalculan solos.
+
 ## Progreso proyectado
 
 Avance que resultaría si el estudiante aprobara todo lo que tiene en curso. Es una proyección explícita y separada del progreso satisfecho; nunca lo sustituye.

@@ -1,0 +1,177 @@
+/* Diálogo de confirmación de cambios de trayectoria.
+   Por encima de todo lo que existe en la aplicación: paneles de detalle y
+   bottom sheets usan 20, los menús de la toolbar 30, la barra de contexto 15,
+   la cabecera táctil 40 y el panel de navegación 100/101. Este debe poder
+   aparecer sobre cualquiera de ellos. */
+.overlay {
+  position: fixed;
+  z-index: 300;
+  inset: 0;
+  background: rgb(20 30 25 / 46%);
+}
+
+.dialog {
+  position: fixed;
+  z-index: 301;
+  top: 50%;
+  left: 50%;
+  width: min(30rem, calc(100vw - 2rem));
+  max-height: min(80vh, calc(100vh - 2rem));
+  overflow-y: auto;
+  padding: 1.25rem;
+  padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 0.9rem;
+  box-shadow: 0 1rem 3rem rgb(23 33 27 / 22%);
+  transform: translate(-50%, -50%);
+}
+
+.dialog h2 {
+  margin: 0 0 0.9rem;
+  color: var(--brand);
+  font-size: 1.2rem;
+  line-height: 1.25;
+}
+
+/* El cambio que originó todo, compacto y siempre a la vista. */
+.requested {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: baseline;
+  margin: 0 0 1rem;
+  padding: 0.5rem 0.7rem;
+  background: var(--brand-soft);
+  border-radius: 0.5rem;
+  font-size: 0.88rem;
+}
+
+.requested strong {
+  min-width: 0;
+}
+
+.requestedMark {
+  color: var(--brand);
+  font-weight: 850;
+}
+
+/* La jerarquía la dan los encabezados, el espaciado y el peso tipográfico: sin
+   árboles dibujados ni líneas decorativas. */
+.group {
+  margin-bottom: 1.1rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--line);
+}
+
+.group h3 {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.3rem 0.75rem;
+  align-items: baseline;
+  margin: 0 0 0.3rem;
+  font-size: 0.9rem;
+  font-weight: 850;
+}
+
+/* El total va junto al título, de modo que recortar la lista nunca oculta el
+   alcance real. */
+.count {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.groupNote {
+  margin: 0 0 0.6rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.impacts {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.impacts li {
+  display: grid;
+  gap: 0.15rem;
+  padding-left: 0.7rem;
+  border-left: 0.18rem solid var(--line);
+}
+
+.impacts strong {
+  font-size: 0.9rem;
+  line-height: 1.25;
+}
+
+.impacts span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.3;
+}
+
+.remaining {
+  margin: 0.5rem 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-style: italic;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+}
+
+/* Área táctil cómoda en ambos botones; sin lenguaje alarmista ni color de
+   error: es un cambio legítimo del estudiante, no un fallo. */
+.cancel,
+.confirm {
+  min-height: 2.75rem;
+  padding: 0.55rem 1rem;
+  border-radius: 0.55rem;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.cancel {
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.cancel:hover {
+  background: #eef3f0;
+}
+
+.confirm {
+  color: #fff;
+  background: var(--brand);
+  border: 1px solid var(--brand);
+}
+
+.confirm:hover {
+  background: #12402f;
+}
+
+@media (max-width: 42rem) {
+  .actions {
+    flex-direction: column-reverse;
+  }
+
+  .cancel,
+  .confirm {
+    width: 100%;
+  }
+}
