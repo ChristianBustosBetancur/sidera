@@ -1,9 +1,13 @@
 export {
   collectBlockingEvaluations,
   collectEvaluationDiagnostics,
+  createEvaluationIndexes,
+  evaluateEligibilityWithIndexes,
   evaluateRequirementExpression,
   evaluateVersionCourseEligibility,
 } from "./evaluation.js";
+export type { EvaluationIndexes } from "./evaluation.js";
+export { reconcileTrajectory } from "./reconciliation.js";
 export { calculatePlanProgress, calculateSatisfiedPlanProgress } from "./progress.js";
 export { deriveVersionCourseState } from "./state.js";
 export type {
@@ -26,6 +30,11 @@ export type {
   SatisfiedCreditProgressDiagnostic,
   SatisfiedPlanProgressResult,
   StudentTrajectory,
+  TrajectoryChange,
+  TrajectoryInvalidation,
+  TrajectoryMark,
+  TrajectoryReconciliation,
+  TrajectoryWarning,
   UnresolvedReferenceDiagnostic,
   VersionCourseEligibilityEvaluation,
 } from "./types.js";

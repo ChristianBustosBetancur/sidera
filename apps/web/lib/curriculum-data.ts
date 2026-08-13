@@ -281,6 +281,17 @@ function blockingReason(evaluation: RequirementEvaluationNode): string | undefin
   }
 }
 
+/* Traduce nodos que YA vienen filtrados como bloqueantes —los que produce
+   `collectBlockingEvaluations` dentro del engine, por ejemplo en una
+   reconciliación— sin volver a recorrer el árbol de requisitos. */
+export function blockingReasonsFromNodes(
+  nodes: readonly RequirementEvaluationNode[],
+): string[] {
+  return nodes
+    .map(blockingReason)
+    .filter((reason): reason is string => reason !== undefined);
+}
+
 export function blockingReasons(
   evaluation: RequirementEvaluationNode,
 ): string[] {

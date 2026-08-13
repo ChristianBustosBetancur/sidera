@@ -16,7 +16,7 @@ import type {
   VersionCourseEligibilityEvaluation,
 } from "./types.js";
 
-type EvaluationIndexes = {
+export type EvaluationIndexes = {
   versionCourses: ReadonlyMap<VersionCourseId, VersionCourse>;
   components: ReadonlyMap<ComponentId, Component>;
   groupings: ReadonlyMap<GroupingId, Grouping>;
@@ -30,10 +30,23 @@ type EvaluationEnvironment = {
   evaluatedVersionCourseId?: VersionCourseId;
 };
 
-function createIndexes(
+/* Los mapas de plan (materias, componentes, agrupaciones) dependen solo del
+   contexto; los dos conjuntos dependen de la trayectoria. Separarlos permite
+   que un bucle de reconciliación rehaga únicamente lo que cambia en vez de
+   reconstruirlo todo en cada evaluación. */
+export function createEvaluationIndexes(
   context: CurriculumEvaluationContext,
   trajectory: StudentTrajectory,
+  reusable?: Pick<EvaluationIndexes, "versionCourses" | "components" | "groupings">,
 ): EvaluationIndexes {
+  if (reusable) {
+    return {
+      ...reusable,
+      completedVersionCourseIds: new Set(trajectory.completedVersionCourseIds),
+      inProgressVersionCourseIds: new Set(trajectory.inProgressVersionCourseIds),
+    };
+  }
+
   const components = new Map<ComponentId, Component>();
   for (const component of context.components) {
     if (component.planVersionId === context.planVersionId) {
@@ -308,6 +321,8 @@ function evaluateNode(
   }
 }
 
+const createIndexes = createEvaluationIndexes;
+
 export function evaluateRequirementExpression(
   expression: RequirementExpression,
   context: CurriculumEvaluationContext,
@@ -353,7 +368,21 @@ export function evaluateVersionCourseEligibility(
   context: CurriculumEvaluationContext,
   trajectory: StudentTrajectory,
 ): VersionCourseEligibilityEvaluation {
-  const indexes = createIndexes(context, trajectory);
+  return evaluateEligibilityWithIndexes(
+    versionCourseId,
+    context,
+    createEvaluationIndexes(context, trajectory),
+  );
+}
+
+/* Misma evaluación, con los índices ya preparados por el llamador. Existe para
+   que la reconciliación no reconstruya el plan entero en cada una de las
+   evaluaciones de su punto fijo. */
+export function evaluateEligibilityWithIndexes(
+  versionCourseId: VersionCourseId,
+  context: CurriculumEvaluationContext,
+  indexes: EvaluationIndexes,
+): VersionCourseEligibilityEvaluation {
   const versionCourse = indexes.versionCourses.get(versionCourseId);
   if (!versionCourse) {
     const diagnostic = unresolvedReference("VERSION_COURSE", versionCourseId);

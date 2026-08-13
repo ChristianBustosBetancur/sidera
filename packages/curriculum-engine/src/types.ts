@@ -155,3 +155,47 @@ export type DerivedCourseStateResult =
       state: "AVAILABLE" | "BLOCKED";
       eligibility: VersionCourseEligibilityEvaluation;
     };
+
+/* ── Reconciliación de trayectoria ─────────────────────────────────────────
+   Editar la trayectoria puede dejar otras materias marcadas sin sustento
+   académico. La reconciliación distingue dos situaciones que NO deben
+   confundirse, porque una se corrige sola y la otra es una decisión del
+   estudiante. */
+
+export type TrajectoryMark = "COMPLETED" | "IN_PROGRESS" | "UNMARKED";
+
+export type TrajectoryChange = {
+  versionCourseId: VersionCourseId;
+  mark: TrajectoryMark;
+};
+
+/* Materia que estaba EN CURSO y deja de cumplir sus requisitos: se retira
+   automáticamente. "En curso" describe el presente del estudiante, así que un
+   presente imposible se corrige.
+   `depth` es la distancia en rondas desde el cambio solicitado: 1 es efecto
+   directo, 2 o más es cascada. Permite ordenar y agrupar el aviso sin
+   recalcular nada. */
+export type TrajectoryInvalidation = {
+  versionCourseId: VersionCourseId;
+  previousMark: "IN_PROGRESS";
+  nextMark: "UNMARKED";
+  depth: number;
+  blocking: readonly RequirementEvaluationNode[];
+};
+
+/* Materia APROBADA que, con la foto actual de la trayectoria, ya no sería
+   elegible. NO se retira: la trayectoria no guarda orden temporal, así que no
+   se puede saber si el estudiante la cursó antes de perder ese requisito o si
+   simplemente está corrigiendo su historial. Se reporta para que decida. */
+export type TrajectoryWarning = {
+  versionCourseId: VersionCourseId;
+  mark: "COMPLETED";
+  blocking: readonly RequirementEvaluationNode[];
+};
+
+export type TrajectoryReconciliation = {
+  requested: TrajectoryChange;
+  nextTrajectory: StudentTrajectory;
+  invalidations: readonly TrajectoryInvalidation[];
+  warnings: readonly TrajectoryWarning[];
+};
