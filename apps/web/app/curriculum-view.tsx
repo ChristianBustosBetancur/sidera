@@ -15,7 +15,7 @@ import {
   type StudentTrajectory,
 } from "@sidera/curriculum-engine";
 import { unalCs2024Official } from "@sidera/curriculum-snapshot";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   blockingReasons,
   courseStateCounts,
@@ -280,14 +280,45 @@ function ComponentSection({
   onMark: (versionCourseId: VersionCourseId, mark: Mark) => void;
 }) {
   const componentGroupings = groupingsByComponentId.get(component.id) ?? [];
+  /* Estado de sesión, no persistido: abrir todo al entrar mantiene el plan
+     legible de un vistazo y evita que el usuario tenga que recordar en qué
+     estado lo dejó. */
+  const [expanded, setExpanded] = useState(true);
+  const contentId = `component-content-${component.id}`;
 
   return (
     <section className={styles.component} aria-labelledby={`component-${component.id}`}>
-      <div className={styles.componentHeading}>
-        <p>Componente</p>
+      {/* El encabezado ENTERO es el control: un objetivo amplio y predecible.
+          Como es un `<button>` real, el teclado y los lectores de pantalla
+          funcionan sin añadir manejadores propios. */}
+      <button
+        type="button"
+        className={styles.componentHeading}
+        onClick={() => setExpanded((current) => !current)}
+        aria-expanded={expanded}
+        aria-controls={contentId}
+      >
         <h2 id={`component-${component.id}`}>{component.name}</h2>
-        <span>{component.requiredCredits} créditos requeridos</span>
-      </div>
+        <span className={styles.componentCredits}>
+          {component.requiredCredits} créditos requeridos
+        </span>
+        <svg
+          className={styles.componentChevron}
+          viewBox="0 0 20 20"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          aria-hidden="true"
+        >
+          <path d="M5.5 8 10 12.5 14.5 8" />
+        </svg>
+      </button>
+      {/* `hidden` NO desmonta: los hijos siguen montados en React y presentes
+          en el DOM, y es el navegador quien los oculta. Se prefiere así porque
+          conserva el estado interno de las tarjetas y evita medir alturas para
+          animar; el coste es que el contenido plegado se sigue renderizando. */}
+      <div id={contentId} hidden={!expanded}>
       {componentGroupings.length > 0 ? (
         <>
           <ProgressBar
@@ -324,6 +355,7 @@ function ComponentSection({
           </p>
         </div>
       )}
+      </div>
     </section>
   );
 }
