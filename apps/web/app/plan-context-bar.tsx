@@ -48,7 +48,17 @@ export function PlanContextBar() {
   }, [trajectory]);
 
   return (
-    <section className={styles.bar} aria-label="Contexto y progreso del plan">
+    <section className={styles.bar} aria-label="Contexto y progreso del plan" data-sticky-chrome>
+      <details className={styles.mobileContext}>
+        <summary>
+          <strong>{unalCs2024Official.academicProgram.name}</strong>
+          <span>{`${presentation.completedPercent}%`}</span>
+        </summary>
+        <p>{unalCs2024Official.planVersion.name}</p>
+        {presentation.inProgressCredits > 0 ? (
+          <p>{presentation.inProgressCredits} créditos en curso</p>
+        ) : null}
+      </details>
       <p className={styles.context}>
         <strong>{unalCs2024Official.academicProgram.name}</strong>
         <span aria-hidden="true"> · </span>

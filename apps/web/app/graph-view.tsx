@@ -337,6 +337,29 @@ export function GraphView() {
     if (selectedId) detailPanelRef.current?.focus({ preventScroll: true });
   }, [selectedId]);
 
+  // En móvil el sheet puede cubrir la card que acaba de seleccionarse.
+  // Se corrige solo esa oclusión, conservando el scroll cuando ya es visible.
+  useEffect(() => {
+    if (!selectedId || isWideDesktop) return;
+    const frame = requestAnimationFrame(() => {
+      const node = nodeRefs.current.get(selectedId);
+      const panel = detailPanelRef.current;
+      if (!node || !panel) return;
+      const nodeBox = node.getBoundingClientRect();
+      const panelTop = panel.getBoundingClientRect().top;
+      const chromeHeight = Array.from(document.querySelectorAll<HTMLElement>("[data-sticky-chrome]"))
+        .reduce((height, element) => height + element.getBoundingClientRect().height, 0);
+      const available = panelTop - chromeHeight - 24;
+      if (nodeBox.height > available) return;
+      if (nodeBox.bottom > panelTop - 12) {
+        window.scrollBy(0, nodeBox.bottom - panelTop + 12);
+      } else if (nodeBox.top < chromeHeight + 12) {
+        window.scrollBy(0, nodeBox.top - chromeHeight - 12);
+      }
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [selectedId, isWideDesktop]);
+
   const measureEdges = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -500,7 +523,11 @@ export function GraphView() {
             if (!graphRegion) return;
             graphRegion.scrollLeft = 0;
             const graphTop = graphRegion.getBoundingClientRect().top + window.scrollY;
-            window.scrollTo(0, Math.max(0, graphTop - 16));
+            const chromeHeight = window.matchMedia("(max-width: 64rem)").matches
+              ? Array.from(document.querySelectorAll<HTMLElement>("[data-sticky-chrome]"))
+                  .reduce((height, element) => height + element.getBoundingClientRect().height, 0)
+              : 0;
+            window.scrollTo(0, Math.max(0, graphTop - chromeHeight - 16));
           }}
         >
           Volver al inicio

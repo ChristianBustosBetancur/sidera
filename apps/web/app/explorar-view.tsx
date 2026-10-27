@@ -519,6 +519,35 @@ export function ExplorerView() {
     return () => document.removeEventListener("pointerdown", handlePointerDown);
   }, [openMenu, suggestionsOpen, closeMenus]);
 
+  // La altura del menú móvil se limita al espacio real bajo la toolbar.
+  // Se vuelve a medir al desplazar o reducir el viewport (incluido el teclado).
+  useEffect(() => {
+    if (!openMenu || !window.matchMedia("(max-width: 42rem)").matches) return;
+    const toolbar = toolbarRef.current;
+    const menu = toolbar?.querySelector<HTMLElement>('[role="group"]');
+    if (!toolbar || !menu) return;
+    const viewportBottom = () => window.visualViewport
+      ? window.visualViewport.offsetTop + window.visualViewport.height
+      : window.innerHeight;
+    if (viewportBottom() - menu.getBoundingClientRect().top < 132) {
+      toolbar.scrollIntoView({ block: "center", behavior: "auto" });
+    }
+    const measure = () => {
+      const height = Math.max(44, viewportBottom() - menu.getBoundingClientRect().top - 12);
+      toolbar.style.setProperty("--filter-menu-height", `${height}px`);
+    };
+    measure();
+    window.addEventListener("scroll", measure, { passive: true });
+    window.addEventListener("resize", measure);
+    window.visualViewport?.addEventListener("resize", measure);
+    return () => {
+      window.removeEventListener("scroll", measure);
+      window.removeEventListener("resize", measure);
+      window.visualViewport?.removeEventListener("resize", measure);
+      toolbar.style.removeProperty("--filter-menu-height");
+    };
+  }, [openMenu]);
+
   /* Lleva una materia a la vista moviendo lo MÍNIMO: si ya se ve entera no se
      toca el scroll, y si no, se corrige solo el desbordamiento. Respeta la
      posición que el usuario haya elegido con el pan. */
@@ -536,8 +565,15 @@ export function ExplorerView() {
     if (overflowLeft > 0) region.scrollLeft -= overflowLeft;
     else if (overflowRight > 0) region.scrollLeft += overflowRight;
 
-    const overflowTop = margin - nodeBox.top;
-    const overflowBottom = nodeBox.bottom - (window.innerHeight - margin);
+    const mobile = window.matchMedia("(max-width: 64rem)").matches;
+    const chromeHeight = mobile
+      ? Array.from(document.querySelectorAll<HTMLElement>("[data-sticky-chrome]"))
+          .reduce((height, element) => height + element.getBoundingClientRect().height, 0)
+      : 0;
+    const sheet = mobile ? document.querySelector<HTMLElement>(`aside.${styles.detail}`) : null;
+    const visibleBottom = sheet ? sheet.getBoundingClientRect().top : window.innerHeight;
+    const overflowTop = chromeHeight + margin - nodeBox.top;
+    const overflowBottom = nodeBox.bottom - (visibleBottom - margin);
     if (overflowTop > 0) window.scrollBy(0, -overflowTop);
     else if (overflowBottom > 0) window.scrollBy(0, overflowBottom);
   }, []);
@@ -974,12 +1010,12 @@ export function ExplorerView() {
                   role="option"
                   aria-selected={index === activeSuggestion}
                   className={index === activeSuggestion ? styles.suggestionActive : ""}
-                  /* `pointerdown` en vez de `click`: el input pierde el foco
-                     antes del click y el listado se cerraría primero. */
+                  /* El mouse conserva el foco del combobox. En touch se deja
+                     el gesto nativo: deslizar la lista no debe elegir materia. */
                   onPointerDown={(event) => {
-                    event.preventDefault();
-                    chooseCourse(suggestion.id as VersionCourseId);
+                    if (event.pointerType !== "touch") event.preventDefault();
                   }}
+                  onClick={() => chooseCourse(suggestion.id as VersionCourseId)}
                   onMouseEnter={() => setActiveSuggestion(index)}
                 >
                   <strong>{suggestion.name}</strong>
@@ -1201,6 +1237,7 @@ export function ExplorerView() {
               onPointerUp={finishPanelDrag}
               onPointerCancel={finishPanelDrag}
             >
+              <div className={styles.mobileDetailHeader}>
                 <button
                   type="button"
                   className={styles.detailClose}
@@ -1216,6 +1253,7 @@ export function ExplorerView() {
                   <h2>{selectedCourse.name}</h2>
                   <p className={styles.detailCode}>{selectedVersionCourse.academicCode}</p>
                 </div>
+              </div>
                 <dl data-no-drag>
                   <div><dt>Estado</dt><dd>{stateLabels[selectedState]}</dd></div>
                   <div><dt>Créditos</dt><dd>{selectedVersionCourse.credits}</dd></div>

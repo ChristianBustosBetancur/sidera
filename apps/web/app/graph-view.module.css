@@ -693,12 +693,20 @@
    `max-height: 45vh` deja visible la mitad superior del viewport: la materia
    seleccionada permanece en contexto detrás del panel. */
 @media (max-width: 72rem) {
+  .graphNavigation button,
+  .courseSelector {
+    min-height: 2.75rem;
+  }
+
   .detailPanel {
     position: fixed;
     z-index: 20;
     inset: auto 0 0;
     max-height: 45vh;
     overflow-y: auto;
+    max-height: 45dvh;
+    overscroll-behavior-y: contain;
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
   }
 }
 
@@ -770,27 +778,58 @@
 @media (max-width: 47rem) {
   .page {
     padding-top: 0.5rem;
+    padding-inline: max(0.75rem, env(safe-area-inset-left)) max(0.75rem, env(safe-area-inset-right));
   }
 
   .header {
     align-items: flex-start;
     flex-direction: column;
-    gap: 1.25rem;
-    padding: 1.5rem 1rem;
+    gap: 0.75rem;
+    padding: 1rem;
     border-radius: 0.8rem;
   }
 
   .controls {
     align-items: flex-start;
     flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.75rem;
   }
 
   .legend {
     flex-wrap: wrap;
+    gap: 0.5rem 0.75rem;
   }
 
   .groupingLegendMobile {
     min-width: 0;
+    flex: none;
+    width: 100%;
+  }
+
+  .groupingLegendMobile summary {
+    display: list-item;
+    min-height: 2.75rem;
+    padding-block: 0.65rem;
+  }
+
+  .graphNavigation {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+
+  .graphNavigation button {
+    min-height: 2.75rem;
+    padding-inline: 0.4rem;
+  }
+
+  .graphNavigation > button:last-child {
+    grid-column: 2;
+  }
+
+  .dragHint {
+    display: none;
   }
 
   .columns {
@@ -798,8 +837,8 @@
   }
 
   .levelColumn {
-    width: 11.5rem;
-    flex-basis: 11.5rem;
+    width: min(17rem, calc(100vw - 4rem));
+    flex-basis: min(17rem, calc(100vw - 4rem));
   }
 
   .canvas {
@@ -815,6 +854,19 @@
     padding: 0.6rem;
   }
 
+  .courseSelector {
+    min-height: 2.75rem;
+  }
+
+  .facts {
+    font-size: 0.8125rem;
+  }
+
+  .actions button {
+    min-height: 2.75rem;
+    font-size: 0.8125rem;
+  }
+
   .courseCard[data-grouping] {
     border-top-width: 3px;
   }
@@ -825,7 +877,8 @@
      demasiado. Fondo opaco porque el 92% translúcido del panel deja traslucir
      el grafo justo donde queda menos espacio para leer. */
   .detailPanel {
-    max-height: 35vh;
+    max-height: 48vh;
+    max-height: 48dvh;
     padding: 0.9rem 1rem;
     padding-bottom: max(0.9rem, env(safe-area-inset-bottom));
     background: #ffffff;
@@ -840,6 +893,25 @@
     top: 0;
     padding-bottom: 0.5rem;
     background: #ffffff;
+  }
+
+  .detailHeader::before {
+    position: absolute;
+    inset: -0.9rem 0 auto;
+    height: 0.9rem;
+    background: #fff;
+    content: "";
+    pointer-events: none;
+  }
+
+  .detailHeader button {
+    min-height: 2.75rem;
+    flex: none;
+  }
+
+  .detailHeader h2,
+  .detailFacts dd {
+    overflow-wrap: anywhere;
   }
 }
 

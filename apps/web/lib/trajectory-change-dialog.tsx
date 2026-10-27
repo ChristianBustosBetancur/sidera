@@ -66,6 +66,7 @@ export function TrajectoryChangeDialog({
   const confirmRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
+    const previousFocus = document.activeElement;
     /* El foco entra en Confirmar: es la acción que el usuario venía a hacer, y
        Escape o Cancelar siguen a un tabulador de distancia. */
     confirmRef.current?.focus();
@@ -100,6 +101,9 @@ export function TrajectoryChangeDialog({
     return () => {
       document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", handleKeyDown, true);
+      if (previousFocus instanceof HTMLElement && previousFocus.isConnected) {
+        previousFocus.focus({ preventScroll: true });
+      }
     };
   }, [onCancel]);
 
