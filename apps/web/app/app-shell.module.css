@@ -323,12 +323,19 @@
 }
 
 @media (max-width: 64rem) {
+  .shell {
+    --app-topbar-height: calc(3rem + 1px + env(safe-area-inset-top));
+  }
+
   .sidebar {
     display: none;
   }
 
   .topBar {
     display: flex;
+    height: var(--app-topbar-height);
+    padding: env(safe-area-inset-top) max(0.75rem, env(safe-area-inset-right)) 0
+      max(0.75rem, env(safe-area-inset-left));
   }
 
   /* La cabecera pasa a ocupar su propia fila: el shell deja de ser una
@@ -340,6 +347,11 @@
 
   .content {
     width: 100%;
+  }
+
+  .drawer {
+    padding-top: max(0.75rem, env(safe-area-inset-top));
+    overscroll-behavior-y: contain;
   }
 }
 

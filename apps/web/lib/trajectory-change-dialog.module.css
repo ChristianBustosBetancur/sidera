@@ -166,8 +166,22 @@
 }
 
 @media (max-width: 42rem) {
+  .dialog {
+    max-height: min(85dvh, calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 1rem));
+    padding: 1rem;
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+    overscroll-behavior-y: contain;
+    overflow-wrap: anywhere;
+  }
+
   .actions {
     flex-direction: column-reverse;
+    position: sticky;
+    bottom: calc(-1 * max(1rem, env(safe-area-inset-bottom)));
+    padding-block: 0.75rem max(1rem, env(safe-area-inset-bottom));
+    margin-bottom: calc(-1 * max(1rem, env(safe-area-inset-bottom)));
+    background: var(--surface);
+    border-top: 1px solid var(--line);
   }
 
   .cancel,

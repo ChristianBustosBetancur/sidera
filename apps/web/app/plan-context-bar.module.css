@@ -31,6 +31,10 @@
   border-bottom: 1px solid var(--line);
 }
 
+.mobileContext {
+  display: none;
+}
+
 .context {
   margin: 0;
   min-width: 0;
@@ -118,13 +122,68 @@
    alinea a la izquierda, en lugar de quedar separado por un hueco enorme. */
 @media (max-width: 42rem) {
   .bar {
-    justify-content: flex-start;
-    gap: 0.35rem 0.6rem;
+    display: block;
+    padding-block: 0.25rem 0.5rem;
   }
 
-  .context {
-    flex-basis: 100%;
+  .context,
+  .percent,
+  .inProgress {
+    display: none;
+  }
+
+  .mobileContext {
+    display: block;
+    font-size: 0.875rem;
+  }
+
+  .mobileContext summary {
+    display: flex;
+    min-height: 2.75rem;
+    gap: 0.5rem;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+  }
+
+  .mobileContext summary strong {
+    min-width: 0;
+    line-height: 1.25;
+  }
+
+  .mobileContext summary span {
+    flex: none;
+    color: var(--brand);
+    font-weight: 900;
+  }
+
+  .mobileContext summary span::after {
+    margin-left: 0.4rem;
+    content: "⌄";
+  }
+
+  .mobileContext[open] summary span::after {
+    content: "⌃";
+  }
+
+  .mobileContext p {
+    margin: 0 0 0.5rem;
+    overflow-wrap: anywhere;
+    color: var(--muted);
+  }
+
+  .progress {
+    flex-wrap: nowrap;
+    justify-content: space-between;
+  }
+
+  .credits {
+    white-space: normal;
     font-size: 0.8rem;
+  }
+
+  .track {
+    width: clamp(3rem, 15vw, 5rem);
   }
 
   /* El nombre del acuerdo es la información menos crítica: cede primero,

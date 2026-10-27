@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { TrajectoryProvider } from "../lib/trajectory";
 import { AppShell } from "./app-shell";
@@ -9,6 +9,8 @@ export const metadata: Metadata = {
   title: "Plan curricular | Sidera",
   description: "Plan oficial de Ciencias de la Computación, Acuerdo 0018 de 2024",
 };
+
+export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover" };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (

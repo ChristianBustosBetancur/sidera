@@ -86,6 +86,21 @@ export function AppShell({ children }: { children: ReactNode }) {
     document.body.style.overflow = "hidden";
 
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Tab") {
+        const focusables = drawerRef.current?.querySelectorAll<HTMLElement>(
+          'button, a[href]',
+        );
+        const first = focusables?.[0];
+        const last = focusables?.[focusables.length - 1];
+        if (event.shiftKey && (document.activeElement === first || document.activeElement === drawerRef.current)) {
+          event.preventDefault();
+          last?.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first?.focus();
+        }
+        return;
+      }
       if (event.key !== "Escape") return;
       setDrawerOpen(false);
       menuButtonRef.current?.focus();
@@ -183,7 +198,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       {/* Cabecera compacta de táctil/tablet. También `sticky`, por el mismo
           motivo que la sidebar. */}
-      <header className={styles.topBar}>
+      <header className={styles.topBar} data-sticky-chrome>
         <button
           ref={menuButtonRef}
           type="button"
