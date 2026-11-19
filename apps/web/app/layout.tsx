@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { TrajectoryProvider } from "../lib/trajectory";
+import { DisplayModeProvider } from "../lib/display-mode";
 import { AppShell } from "./app-shell";
 import "./globals.css";
 import styles from "./layout.module.css";
@@ -10,7 +11,12 @@ export const metadata: Metadata = {
   description: "Plan oficial de Ciencias de la Computación, Acuerdo 0018 de 2024",
 };
 
-export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover" };
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  userScalable: true,
+  viewportFit: "cover",
+};
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
@@ -19,7 +25,9 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
         {/* El shell envuelve a las tres vistas desde el layout raíz: la
             navegación vive en un solo sitio y no se duplica por página. */}
         <TrajectoryProvider>
-          <AppShell>{children}</AppShell>
+          <DisplayModeProvider>
+            <AppShell>{children}</AppShell>
+          </DisplayModeProvider>
         </TrajectoryProvider>
         {process.env.VERCEL_ENV !== "production" ? (
           <aside className={styles.previewBadge}>

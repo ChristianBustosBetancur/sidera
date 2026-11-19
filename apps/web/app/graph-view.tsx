@@ -35,6 +35,8 @@ import {
 } from "../lib/pointer-gestures";
 import { type Mark, useTrajectory } from "../lib/trajectory";
 import styles from "./graph-view.module.css";
+import { useDisplayMode } from "../lib/display-mode";
+import { canvasPoint } from "../lib/display-geometry";
 
 type Point = { x: number; y: number };
 type EdgePosition = CourseEdge & { start: Point; end: Point };
@@ -167,6 +169,7 @@ function GraphCourseCard({
 }
 
 export function GraphView() {
+  const { fullView } = useDisplayMode();
   const { trajectory, states, markCourse } = useTrajectory();
   const [selectedId, setSelectedId] = useState<VersionCourseId | null>(null);
   const [edgePositions, setEdgePositions] = useState<EdgePosition[]>([]);
@@ -220,7 +223,7 @@ export function GraphView() {
   }, [isWideDesktop, selectedId]);
 
   const handlePanelPointerDown = (event: ReactPointerEvent<HTMLElement>) => {
-    if (!isWideDesktop || event.button !== 0) return;
+    if (event.pointerType === "touch" || !isWideDesktop || event.button !== 0) return;
     /* Superficie arrastrable = todo el panel MENOS dos cosas: los controles
        —que conservan su gesto propio— y los bloques marcados `data-no-drag`,
        que son texto de contenido donde seleccionar y copiar importa más que
@@ -364,6 +367,7 @@ export function GraphView() {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const canvasRect = canvas.getBoundingClientRect();
+    const scale = canvasRect.width / canvas.offsetWidth;
     const positions = graph.edges.flatMap((edge): EdgePosition[] => {
       const source = nodeRefs.current.get(edge.sourceId);
       const target = nodeRefs.current.get(edge.targetId);
@@ -373,14 +377,8 @@ export function GraphView() {
       return [
         {
           ...edge,
-          start: {
-            x: sourceRect.right - canvasRect.left,
-            y: sourceRect.top + sourceRect.height / 2 - canvasRect.top,
-          },
-          end: {
-            x: targetRect.left - canvasRect.left,
-            y: targetRect.top + targetRect.height / 2 - canvasRect.top,
-          },
+          start: canvasPoint(sourceRect.right, sourceRect.top + sourceRect.height / 2, canvasRect.left, canvasRect.top, scale),
+          end: canvasPoint(targetRect.left, targetRect.top + targetRect.height / 2, canvasRect.left, canvasRect.top, scale),
         },
       ];
     });
@@ -401,7 +399,7 @@ export function GraphView() {
       clearTimeout(timeout);
       observer.disconnect();
     };
-  }, [measureEdges]);
+  }, [measureEdges, fullView]);
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLElement>) => {
     if (
@@ -573,7 +571,7 @@ export function GraphView() {
             setSelectedId(null);
           }}
         >
-          <div className={styles.canvas} ref={canvasRef}>
+          <div className={styles.canvas} ref={canvasRef} data-full-view={fullView}>
             <svg className={styles.edges} aria-hidden="true">
               {edgePositions.map((edge, index) => {
                 const focused =

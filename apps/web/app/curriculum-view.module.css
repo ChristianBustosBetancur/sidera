@@ -663,6 +663,12 @@
   }
 }
 
+.page[data-full-view="true"] { width: 64rem; }
+.page[data-full-view="true"] .courseGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.page[data-full-view="true"] .hero { grid-template-columns: minmax(0, 1fr) 22rem; }
+.page[data-full-view="true"] .hero h1 { font-size: 2.5rem; }
+.page[data-full-view="true"] .intro { flex-direction: row; }
+
 @media (prefers-reduced-motion: reduce) {
   .progressCompleted,
   .progressInProgress,

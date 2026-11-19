@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import styles from "./app-shell.module.css";
 import { PlanContextBar } from "./plan-context-bar";
+import { useDisplayMode } from "../lib/display-mode";
 
 /* Solo rutas que existen. No se añaden destinos futuros —Progreso, Logros,
    Calendario— como botones inertes: un enlace que no lleva a ninguna parte es
@@ -62,6 +63,7 @@ function isActiveRoute(pathname: string, href: string): boolean {
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
+  const { fullView, toggle } = useDisplayMode();
   const pathname = usePathname() ?? "/";
   const [collapsed, setCollapsed] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -224,6 +226,12 @@ export function AppShell({ children }: { children: ReactNode }) {
           </span>
           Sidera
         </span>
+        <button type="button" className={styles.viewModeButton} onClick={toggle} aria-pressed={fullView}>
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+            {fullView ? <><rect x="5" y="2" width="10" height="16" rx="2" /><path d="M8 15h4" /></> : <path d="M7 3H3v4m10-4h4v4M3 13v4h4m10-4v4h-4" />}
+          </svg>
+          {fullView ? "Vista móvil" : "Vista completa"}
+        </button>
       </header>
 
       {drawerOpen ? (
