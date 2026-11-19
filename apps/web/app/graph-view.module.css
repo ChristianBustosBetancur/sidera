@@ -647,6 +647,22 @@
   margin: 1.25rem 0;
 }
 
+.detailHeader .detailToggle,
+.compactCode { display: none; }
+
+@media (max-width: 72rem) {
+  .detailHeader .detailToggle { display: inline-flex; align-items: center; font-size: 0.8125rem; }
+  .detailPanel[data-expanded="false"] .detailEyebrow { display: none; }
+  .detailPanel[data-expanded="false"] .compactCode { display: block; font-size: 0.75rem; }
+  .detailPanel[data-expanded="false"] h2 {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    font-size: 1rem;
+  }
+}
+
 .detailFacts div {
   min-width: 0;
 }

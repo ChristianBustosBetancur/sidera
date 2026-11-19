@@ -54,6 +54,9 @@ import styles from "./explorar-view.module.css";
 import { useDisplayMode } from "../lib/display-mode";
 import { usePanoramicScale } from "../lib/use-panoramic-scale";
 import { initialMobileDetail, mobileDetailReducer } from "../lib/mobile-detail-state";
+import { useVisibleSheet } from "../lib/use-visible-sheet";
+import { GraphGestureHelp } from "../lib/gesture-guidance";
+import sheetStyles from "../lib/mobile-sheet.module.css";
 
 /* Cuántas sugerencias se ofrecen bajo el buscador. Suficientes para elegir sin
    convertir el desplegable en una segunda lista del plan. */
@@ -651,6 +654,7 @@ export function ExplorerView() {
      sheet y su scroll nativo. El offset se descarta al cambiar de selección,
      así que al reabrir el panel vuelve a su anclaje inicial (no se persiste). */
   const panelRef = useRef<HTMLElement>(null);
+  useVisibleSheet(panelRef, screenVariant !== "desktop" && selectedId !== null);
   useEffect(() => {
     if (selectedId && screenVariant !== "desktop") {
       const frame = requestAnimationFrame(() => revealCourse(selectedId));
@@ -928,6 +932,7 @@ export function ExplorerView() {
           <p>Mapa curricular interactivo</p>
           <h1>Trayectoria Curricular</h1>
         </div>
+        <GraphGestureHelp />
       </header>
 
       <section className={styles.instructions} aria-label="Cómo usar el árbol">
@@ -1243,7 +1248,8 @@ export function ExplorerView() {
           {selectedVersionCourse && selectedCourse && selectedState ? (
             <aside
               ref={panelRef}
-              className={`${styles.detail} ${isPanelDragging ? styles.panelDragging : ""}`}
+              className={`${styles.detail} ${sheetStyles.sheet} ${isPanelDragging ? styles.panelDragging : ""}`}
+              data-mobile={screenVariant !== "desktop"}
               data-expanded={detailExpanded}
               aria-live="polite"
               style={
@@ -1256,10 +1262,10 @@ export function ExplorerView() {
               onPointerUp={finishPanelDrag}
               onPointerCancel={finishPanelDrag}
             >
-              <div className={styles.mobileDetailHeader}>
+              <div className={`${styles.mobileDetailHeader} ${sheetStyles.header}`}>
                 <button
                   type="button"
-                  className={styles.detailToggle}
+                  className={`${styles.detailToggle} ${sheetStyles.toggle}`}
                   aria-expanded={detailExpanded}
                   aria-controls={detailBodyId}
                   onClick={() => dispatchDetail({ type: "toggle" })}
@@ -1268,7 +1274,7 @@ export function ExplorerView() {
                 </button>
                 <button
                   type="button"
-                  className={styles.detailClose}
+                  className={`${styles.detailClose} ${sheetStyles.close}`}
                   onClick={() => setSelectedId(null)}
                   aria-label="Cerrar detalle"
                 >
@@ -1276,7 +1282,7 @@ export function ExplorerView() {
                 </button>
                 {/* Cabecera: no monopoliza el arrastre —el panel entero es
                     agarrable— pero sí lleva el grip que lo hace descubrible. */}
-                <div className={styles.detailHandle}>
+                <div className={`${styles.detailHandle} ${sheetStyles.summary}`}>
                   <p className={styles.eyebrow}>Materia seleccionada</p>
                   <h2>{selectedCourse.name}</h2>
                   <p className={styles.detailCode}>{selectedVersionCourse.academicCode}</p>
