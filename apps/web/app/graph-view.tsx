@@ -37,6 +37,7 @@ import { type Mark, useTrajectory } from "../lib/trajectory";
 import styles from "./graph-view.module.css";
 import { useDisplayMode } from "../lib/display-mode";
 import { canvasPoint } from "../lib/display-geometry";
+import { usePanoramicScale } from "../lib/use-panoramic-scale";
 
 type Point = { x: number; y: number };
 type EdgePosition = CourseEdge & { start: Point; end: Point };
@@ -177,6 +178,7 @@ export function GraphView() {
   const graphRegionRef = useRef<HTMLElement>(null);
   const detailPanelRef = useRef<HTMLElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
+  const panoramaScale = usePanoramicScale(graphRegionRef, canvasRef, fullView, "all-columns");
   const nodeRefs = useRef(new Map<VersionCourseId, HTMLElement>());
   const dragStateRef = useRef<DragState | null>(null);
   const suppressNextClickRef = useRef(false);
@@ -399,7 +401,7 @@ export function GraphView() {
       clearTimeout(timeout);
       observer.disconnect();
     };
-  }, [measureEdges, fullView]);
+  }, [measureEdges, panoramaScale]);
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLElement>) => {
     if (
@@ -571,7 +573,7 @@ export function GraphView() {
             setSelectedId(null);
           }}
         >
-          <div className={styles.canvas} ref={canvasRef} data-full-view={fullView}>
+          <div className={styles.canvas} ref={canvasRef} data-full-view={fullView} style={{ zoom: panoramaScale }}>
             <svg className={styles.edges} aria-hidden="true">
               {edgePositions.map((edge, index) => {
                 const focused =

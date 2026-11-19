@@ -13,7 +13,9 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useId,
   useMemo,
+  useReducer,
   useRef,
   useState,
 } from "react";
@@ -50,6 +52,8 @@ import {
 import { type Mark, useTrajectory } from "../lib/trajectory";
 import styles from "./explorar-view.module.css";
 import { useDisplayMode } from "../lib/display-mode";
+import { usePanoramicScale } from "../lib/use-panoramic-scale";
+import { initialMobileDetail, mobileDetailReducer } from "../lib/mobile-detail-state";
 
 /* Cuántas sugerencias se ofrecen bajo el buscador. Suficientes para elegir sin
    convertir el desplegable en una segunda lista del plan. */
@@ -433,9 +437,15 @@ export function ExplorerView() {
   const { fullView } = useDisplayMode();
   const screenVariant = useResponsiveVariant();
   const variant = fullView ? "desktop" : screenVariant;
-  const [selectedId, setSelectedId] = useState<VersionCourseId | null>(null);
+  const [detailState, dispatchDetail] = useReducer(mobileDetailReducer, initialMobileDetail);
+  const selectedId = detailState.selectedId;
+  const detailExpanded = screenVariant === "desktop" || detailState.expanded;
+  const detailBodyId = useId();
+  const setSelectedId = useCallback((id: VersionCourseId | null) => dispatchDetail({ type: "select", id }), []);
   const focus = useMemo(() => buildFocusContext(selectedId), [selectedId]);
   const regionRef = useRef<HTMLElement>(null);
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const panoramaScale = usePanoramicScale(regionRef, canvasRef, fullView, "desktop-window");
   const hasUserMovedRef = useRef(false);
   const [isDragging, setIsDragging] = useState(false);
   const dragStateRef = useRef<{
@@ -590,7 +600,7 @@ export function ExplorerView() {
       /* Tras el re-render el nodo ya tiene su presencia final. */
       requestAnimationFrame(() => revealCourse(id));
     },
-    [closeMenus, revealCourse],
+    [closeMenus, revealCourse, setSelectedId],
   );
 
   const handleSearchKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
@@ -641,6 +651,12 @@ export function ExplorerView() {
      sheet y su scroll nativo. El offset se descarta al cambiar de selección,
      así que al reabrir el panel vuelve a su anclaje inicial (no se persiste). */
   const panelRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (selectedId && screenVariant !== "desktop") {
+      const frame = requestAnimationFrame(() => revealCourse(selectedId));
+      return () => cancelAnimationFrame(frame);
+    }
+  }, [selectedId, detailExpanded, panoramaScale, screenVariant, revealCourse]);
   const [panelOffset, setPanelOffset] = useState<PanelOffset>({ x: 0, y: 0 });
   const [isPanelDragging, setIsPanelDragging] = useState(false);
   const panelDragRef = useRef<{
@@ -742,11 +758,9 @@ export function ExplorerView() {
     setIsPanelDragging(false);
   };
 
-  /* El árbol conserva su tamaño natural (escala 1): al entrar se centra el
-     viewport sobre el centro real del canvas desplazando el scroll de la
-     región. No hay relayout, no se reducen labels y no se mueve ningún nodo.
-     En móvil no se fuerza el centrado horizontal para no interferir con el
-     scroll vertical, que es la navegación principal. */
+  /* Centrar el encuadre sobre el canvas sin relayout. Vista completa aplica
+     la escala medida antes de centrar; Vista móvil conserva el inicio lateral
+     existente para no interferir con el scroll vertical. */
   const centerViewport = useCallback(() => {
     const region = regionRef.current;
     if (!region || variant === "mobile") return;
@@ -764,7 +778,7 @@ export function ExplorerView() {
     });
     observer.observe(region);
     return () => observer.disconnect();
-  }, [centerViewport]);
+  }, [centerViewport, panoramaScale]);
 
   /* Pan del LIENZO completo (nunca de un nodo): desplaza el scroll de la
      región. Solo mouse/pen — en táctil manda el scroll nativo, así que no se
@@ -870,6 +884,7 @@ export function ExplorerView() {
     : [];
 
   const canvasStyle: CSSProperties = {
+    zoom: panoramaScale,
     width: `${geometry[variant].width}rem`,
     height: `${geometry[variant].height}rem`,
   };
@@ -1156,7 +1171,7 @@ export function ExplorerView() {
             }}
           >
             <div className={styles.canvasFrame}>
-              <div className={styles.canvas} style={canvasStyle} data-full-view={fullView}>
+              <div ref={canvasRef} className={styles.canvas} style={canvasStyle} data-full-view={fullView}>
                 <Branches
                   variant={variant}
                   focus={focus}
@@ -1229,6 +1244,7 @@ export function ExplorerView() {
             <aside
               ref={panelRef}
               className={`${styles.detail} ${isPanelDragging ? styles.panelDragging : ""}`}
+              data-expanded={detailExpanded}
               aria-live="polite"
               style={
                 screenVariant === "desktop" && (panelOffset.x !== 0 || panelOffset.y !== 0)
@@ -1241,6 +1257,15 @@ export function ExplorerView() {
               onPointerCancel={finishPanelDrag}
             >
               <div className={styles.mobileDetailHeader}>
+                <button
+                  type="button"
+                  className={styles.detailToggle}
+                  aria-expanded={detailExpanded}
+                  aria-controls={detailBodyId}
+                  onClick={() => dispatchDetail({ type: "toggle" })}
+                >
+                  {detailExpanded ? "Contraer" : "Ver detalle"}
+                </button>
                 <button
                   type="button"
                   className={styles.detailClose}
@@ -1257,6 +1282,7 @@ export function ExplorerView() {
                   <p className={styles.detailCode}>{selectedVersionCourse.academicCode}</p>
                 </div>
               </div>
+              <div id={detailBodyId} hidden={!detailExpanded}>
                 <dl data-no-drag>
                   <div><dt>Estado</dt><dd>{stateLabels[selectedState]}</dd></div>
                   <div><dt>Créditos</dt><dd>{selectedVersionCourse.credits}</dd></div>
@@ -1301,6 +1327,7 @@ export function ExplorerView() {
                     </button>
                   ))}
                 </fieldset>
+              </div>
             </aside>
           ) : null}
         </div>

@@ -251,7 +251,7 @@
   padding: 1rem;
 }
 
-.canvas[data-full-view="true"] { zoom: 0.6; }
+.canvas[data-full-view="true"] { min-width: 0; }
 .canvas[data-full-view="true"] .columns { gap: 4.5rem; }
 .canvas[data-full-view="true"] .levelColumn { width: 17rem; flex-basis: 17rem; }
 
