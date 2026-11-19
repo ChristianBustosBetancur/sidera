@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { TrajectoryProvider } from "../lib/trajectory";
 import { DisplayModeProvider } from "../lib/display-mode";
+import { GestureGuidanceProvider } from "../lib/gesture-guidance";
 import { AppShell } from "./app-shell";
 import "./globals.css";
 import styles from "./layout.module.css";
@@ -26,7 +27,9 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
             navegación vive en un solo sitio y no se duplica por página. */}
         <TrajectoryProvider>
           <DisplayModeProvider>
-            <AppShell>{children}</AppShell>
+            <GestureGuidanceProvider>
+              <AppShell>{children}</AppShell>
+            </GestureGuidanceProvider>
           </DisplayModeProvider>
         </TrajectoryProvider>
         {process.env.VERCEL_ENV !== "production" ? (

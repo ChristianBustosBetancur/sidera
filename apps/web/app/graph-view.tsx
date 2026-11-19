@@ -14,7 +14,9 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useId,
   useMemo,
+  useReducer,
   useRef,
   useState,
 } from "react";
@@ -38,6 +40,10 @@ import styles from "./graph-view.module.css";
 import { useDisplayMode } from "../lib/display-mode";
 import { canvasPoint } from "../lib/display-geometry";
 import { usePanoramicScale } from "../lib/use-panoramic-scale";
+import { initialMobileDetail, mobileDetailReducer } from "../lib/mobile-detail-state";
+import { useVisibleSheet } from "../lib/use-visible-sheet";
+import { GraphGestureHelp } from "../lib/gesture-guidance";
+import sheetStyles from "../lib/mobile-sheet.module.css";
 
 type Point = { x: number; y: number };
 type EdgePosition = CourseEdge & { start: Point; end: Point };
@@ -172,7 +178,10 @@ function GraphCourseCard({
 export function GraphView() {
   const { fullView } = useDisplayMode();
   const { trajectory, states, markCourse } = useTrajectory();
-  const [selectedId, setSelectedId] = useState<VersionCourseId | null>(null);
+  const [detailState, dispatchDetail] = useReducer(mobileDetailReducer, initialMobileDetail);
+  const selectedId = detailState.selectedId;
+  const setSelectedId = useCallback((id: VersionCourseId | null) => dispatchDetail({ type: "select", id }), []);
+  const detailBodyId = useId();
   const [edgePositions, setEdgePositions] = useState<EdgePosition[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const graphRegionRef = useRef<HTMLElement>(null);
@@ -187,6 +196,8 @@ export function GraphView() {
      es un bottom sheet y no se mueve. El offset se descarta al cambiar de
      selección, así que al reabrir vuelve a su anclaje inicial (no se persiste). */
   const isWideDesktop = useIsWideDesktop();
+  const detailExpanded = isWideDesktop || detailState.expanded;
+  useVisibleSheet(detailPanelRef, !isWideDesktop && selectedId !== null);
   const [panelOffset, setPanelOffset] = useState<PanelOffset>({ x: 0, y: 0 });
   const [isPanelDragging, setIsPanelDragging] = useState(false);
   const panelDragRef = useRef<{
@@ -363,7 +374,7 @@ export function GraphView() {
       }
     });
     return () => cancelAnimationFrame(frame);
-  }, [selectedId, isWideDesktop]);
+  }, [selectedId, isWideDesktop, detailExpanded]);
 
   const measureEdges = useCallback(() => {
     const canvas = canvasRef.current;
@@ -480,6 +491,7 @@ export function GraphView() {
           de abajo explica cómo leer el grafo. */}
       <header className={styles.header}>
         <h1>Mapa de Prerrequisitos</h1>
+        <GraphGestureHelp />
       </header>
 
       <section className={styles.controls} aria-label="Leyenda e instrucciones">
@@ -617,8 +629,8 @@ export function GraphView() {
                           }
                         }}
                         onSelect={() =>
-                          setSelectedId((current) =>
-                            current === versionCourse.id
+                          setSelectedId(
+                            selectedId === versionCourse.id
                               ? null
                               : versionCourse.id,
                           )
@@ -635,7 +647,9 @@ export function GraphView() {
         {selectedVersionCourse && selectedState ? (
           <aside
             ref={detailPanelRef}
-            className={`${styles.detailPanel} ${isPanelDragging ? styles.panelDragging : ""}`}
+            className={`${styles.detailPanel} ${sheetStyles.sheet} ${isPanelDragging ? styles.panelDragging : ""}`}
+            data-mobile={!isWideDesktop}
+            data-expanded={detailExpanded}
             role="dialog"
             aria-modal="false"
             aria-labelledby="course-detail-title"
@@ -650,20 +664,25 @@ export function GraphView() {
             onPointerUp={finishPanelDrag}
             onPointerCancel={finishPanelDrag}
           >
-            <div className={styles.detailHeader}>
+            <div className={`${styles.detailHeader} ${sheetStyles.header}`}>
               {/* Lleva el grip que hace descubrible el arrastre; la superficie
                   agarrable, en cambio, es el panel entero. */}
-              <div className={styles.detailHeading}>
+              <div className={`${styles.detailHeading} ${sheetStyles.summary}`}>
                 <span className={styles.detailEyebrow}>Detalle de materia</span>
                 <h2 id="course-detail-title">
                   {selectedCourse?.name ?? "Materia sin nombre"}
                 </h2>
+                <span className={styles.compactCode}>{selectedVersionCourse.academicCode}</span>
               </div>
-              <button type="button" onClick={() => setSelectedId(null)}>
+              <button type="button" className={`${styles.detailToggle} ${sheetStyles.toggle}`} aria-expanded={detailExpanded} aria-controls={detailBodyId} onClick={() => dispatchDetail({ type: "toggle" })}>
+                {detailExpanded ? "Contraer" : "Ver detalle"}
+              </button>
+              <button type="button" className={sheetStyles.close} onClick={() => setSelectedId(null)}>
                 Cerrar
               </button>
             </div>
 
+            <div id={detailBodyId} hidden={!detailExpanded}>
             <dl className={styles.detailFacts} data-no-drag>
               <div>
                 <dt>Código</dt>
@@ -745,6 +764,7 @@ export function GraphView() {
                 )}
               </div>
             </section>
+            </div>
           </aside>
         ) : null}
       </div>
