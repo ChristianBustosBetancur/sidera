@@ -312,7 +312,7 @@
   min-width: 0;
   overflow-x: auto;
   overscroll-behavior-inline: contain;
-  touch-action: pan-x pan-y;
+  touch-action: pan-x pan-y pinch-zoom;
   background:
     radial-gradient(circle at 50% 0, rgb(255 255 255 / 92%), transparent 31rem),
     linear-gradient(90deg, transparent 49.92%, rgb(43 88 69 / 8%) 50%, transparent 50.08%);
@@ -332,6 +332,8 @@
 .canvas {
   position: relative;
 }
+
+.canvas[data-full-view="true"] { zoom: 0.6; }
 
 .branches {
   position: absolute;

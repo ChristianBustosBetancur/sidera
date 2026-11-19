@@ -49,6 +49,7 @@ import {
 } from "../lib/explorer-filters";
 import { type Mark, useTrajectory } from "../lib/trajectory";
 import styles from "./explorar-view.module.css";
+import { useDisplayMode } from "../lib/display-mode";
 
 /* Cuántas sugerencias se ofrecen bajo el buscador. Suficientes para elegir sin
    convertir el desplegable en una segunda lista del plan. */
@@ -429,7 +430,9 @@ function useResponsiveVariant(): Variant {
 
 export function ExplorerView() {
   const { trajectory, states, markCourse } = useTrajectory();
-  const variant = useResponsiveVariant();
+  const { fullView } = useDisplayMode();
+  const screenVariant = useResponsiveVariant();
+  const variant = fullView ? "desktop" : screenVariant;
   const [selectedId, setSelectedId] = useState<VersionCourseId | null>(null);
   const focus = useMemo(() => buildFocusContext(selectedId), [selectedId]);
   const regionRef = useRef<HTMLElement>(null);
@@ -657,7 +660,7 @@ export function ExplorerView() {
      derecho quedaría fuera de pantalla al estrechar la ventana. El listener
      vive solo mientras hay panel abierto en desktop. */
   useEffect(() => {
-    if (variant !== "desktop" || !selectedId) return;
+    if (screenVariant !== "desktop" || !selectedId) return;
     const handleResize = () => {
       const panel = panelRef.current;
       if (!panel) return;
@@ -673,10 +676,10 @@ export function ExplorerView() {
     };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
-  }, [variant, selectedId]);
+  }, [screenVariant, selectedId]);
 
   const handlePanelPointerDown = (event: ReactPointerEvent<HTMLElement>) => {
-    if (variant !== "desktop" || event.button !== 0) return;
+    if (event.pointerType === "touch" || screenVariant !== "desktop" || event.button !== 0) return;
     /* Superficie arrastrable = todo el panel MENOS dos cosas: los controles
        —que conservan su gesto propio— y los bloques marcados `data-no-drag`,
        que son texto de contenido donde seleccionar y copiar importa más que
@@ -1153,7 +1156,7 @@ export function ExplorerView() {
             }}
           >
             <div className={styles.canvasFrame}>
-              <div className={styles.canvas} style={canvasStyle}>
+              <div className={styles.canvas} style={canvasStyle} data-full-view={fullView}>
                 <Branches
                   variant={variant}
                   focus={focus}
@@ -1228,7 +1231,7 @@ export function ExplorerView() {
               className={`${styles.detail} ${isPanelDragging ? styles.panelDragging : ""}`}
               aria-live="polite"
               style={
-                variant === "desktop" && (panelOffset.x !== 0 || panelOffset.y !== 0)
+                screenVariant === "desktop" && (panelOffset.x !== 0 || panelOffset.y !== 0)
                   ? { transform: `translate(${panelOffset.x}px, ${panelOffset.y}px)` }
                   : undefined
               }

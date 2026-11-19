@@ -33,6 +33,7 @@ import {
 } from "../lib/curriculum-data";
 import { type Mark, useTrajectory } from "../lib/trajectory";
 import styles from "./curriculum-view.module.css";
+import { useDisplayMode } from "../lib/display-mode";
 
 const groupingsByComponentId = new Map(
   unalCs2024Official.components.map((component) => [
@@ -361,6 +362,7 @@ function ComponentSection({
 }
 
 export function CurriculumView() {
+  const { fullView, planScale } = useDisplayMode();
   const { trajectory, states, markCourse } = useTrajectory();
 
   const progress = useMemo(
@@ -381,7 +383,7 @@ export function CurriculumView() {
   const counts = courseStateCounts(states);
 
   return (
-    <main className={styles.page}>
+    <main className={styles.page} data-full-view={fullView} style={fullView ? { zoom: planScale } : undefined}>
       <header className={styles.hero}>
         <div>
           <p className={styles.eyebrow}>{unalCs2024Official.university.name}</p>
