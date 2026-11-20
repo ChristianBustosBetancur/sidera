@@ -1,0 +1,17 @@
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-bottom: .65rem; }
+.controls button { min-width: 44px; min-height: 44px; border: 1px solid var(--line); border-radius: .5rem; background: var(--surface); color: var(--ink); padding: .5rem .8rem; font: inherit; cursor: pointer; }
+.controls button:disabled { opacity: .4; cursor: default; }
+.controls button:focus-visible, .viewport:focus-visible { outline: 3px solid var(--brand); outline-offset: 3px; }
+.controls .details { margin-left: auto; border-color: var(--brand); color: var(--brand); font-weight: 700; }
+.viewport { position: relative; width: 100%; height: max(24rem, calc(100svh - 10rem)); max-height: 48rem; overflow: hidden; touch-action: none; user-select: none; cursor: grab; }
+.viewport:active { cursor: grabbing; }
+.world { position: absolute; top: 0; left: 0; width: max-content; transform-origin: 0 0; }
+.overlay { position: fixed; inset: 0; z-index: 200; background: rgb(20 30 25 / 46%); display: flex; align-items: flex-end; justify-content: center; padding: 1rem; padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
+.sheet { width: min(100%, 36rem); max-height: 85dvh; overflow: auto; overscroll-behavior: contain; border-radius: .9rem; background: var(--surface); }
+.sheet > aside { position: static !important; width: auto !important; max-width: none !important; min-width: 0 !important; max-height: none !important; overflow: visible !important; margin: 0 !important; transform: none !important; }
+.sheet > aside { padding: 1rem !important; }
+.sheet > aside > div:first-child { position: sticky; top: 0; z-index: 1; background: var(--surface); display: flex !important; align-items: flex-start; gap: .75rem; }
+.sheet > aside > div:first-child > div { order: 1; flex: 1; min-width: 0; }
+.sheet > aside > div:first-child > button { position: static !important; order: 2; flex: none; min-width: 44px; min-height: 44px; }
+.sheet h2 { -webkit-line-clamp: unset !important; overflow: visible !important; }
+@media (prefers-reduced-motion: reduce) { .world { transition: none; } }

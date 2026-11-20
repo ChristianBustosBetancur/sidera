@@ -1,24 +1,21 @@
 import { describe, expect, it } from "vitest";
 import type { VersionCourseId } from "@sidera/curriculum-domain";
 import { initialMobileDetail, mobileDetailReducer } from "./mobile-detail-state";
-
 const first = "first" as VersionCourseId;
 const second = "second" as VersionCourseId;
-
-describe("mobile course detail", () => {
-  it("opens compact for each selection, including reopening a course", () => {
-    const expanded = mobileDetailReducer({ selectedId: first, expanded: true }, { type: "select", id: second });
-    expect(expanded).toEqual({ selectedId: second, expanded: false });
-    expect(mobileDetailReducer({ selectedId: first, expanded: true }, { type: "select", id: first }).expanded).toBe(false);
+describe("on-demand course details", () => {
+  it("selects without automatically opening a panel", () => {
+    expect(mobileDetailReducer(initialMobileDetail, { type: "select", id: first })).toEqual({ selectedId: first, detailOpen: false });
   });
-  it("expands and collapses without losing selection", () => {
+  it("opens explicitly and closes without clearing selection", () => {
     const selected = mobileDetailReducer(initialMobileDetail, { type: "select", id: first });
-    const expanded = mobileDetailReducer(selected, { type: "toggle" });
-    expect(expanded).toEqual({ selectedId: first, expanded: true });
-    expect(mobileDetailReducer(expanded, { type: "toggle" })).toEqual(selected);
+    const opened = mobileDetailReducer(selected, { type: "open" });
+    expect(opened).toEqual({ selectedId: first, detailOpen: true });
+    expect(mobileDetailReducer(opened, { type: "close" })).toEqual(selected);
+    expect(mobileDetailReducer(initialMobileDetail, { type: "open" })).toBe(initialMobileDetail);
   });
-  it("closing clears selection and expansion; toggling a closed panel is inert", () => {
-    expect(mobileDetailReducer({ selectedId: first, expanded: true }, { type: "select", id: null })).toEqual(initialMobileDetail);
-    expect(mobileDetailReducer(initialMobileDetail, { type: "toggle" })).toBe(initialMobileDetail);
+  it("new selection closes old detail; clearing focus clears detail", () => {
+    expect(mobileDetailReducer({ selectedId: first, detailOpen: true }, { type: "select", id: second })).toEqual({ selectedId: second, detailOpen: false });
+    expect(mobileDetailReducer({ selectedId: first, detailOpen: true }, { type: "select", id: null })).toEqual(initialMobileDetail);
   });
 });

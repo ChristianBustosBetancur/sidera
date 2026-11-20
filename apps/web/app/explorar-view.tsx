@@ -13,7 +13,6 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
-  useId,
   useMemo,
   useReducer,
   useRef,
@@ -52,11 +51,8 @@ import {
 import { type Mark, useTrajectory } from "../lib/trajectory";
 import styles from "./explorar-view.module.css";
 import { useDisplayMode } from "../lib/display-mode";
-import { usePanoramicScale } from "../lib/use-panoramic-scale";
+import { CourseDetails, GraphViewport, useMobileGraph, type GraphCameraHandle } from "../lib/graph-viewport";
 import { initialMobileDetail, mobileDetailReducer } from "../lib/mobile-detail-state";
-import { useVisibleSheet } from "../lib/use-visible-sheet";
-import { GraphGestureHelp } from "../lib/gesture-guidance";
-import sheetStyles from "../lib/mobile-sheet.module.css";
 
 /* Cuántas sugerencias se ofrecen bajo el buscador. Suficientes para elegir sin
    convertir el desplegable en una segunda lista del plan. */
@@ -442,13 +438,13 @@ export function ExplorerView() {
   const variant = fullView ? "desktop" : screenVariant;
   const [detailState, dispatchDetail] = useReducer(mobileDetailReducer, initialMobileDetail);
   const selectedId = detailState.selectedId;
-  const detailExpanded = screenVariant === "desktop" || detailState.expanded;
-  const detailBodyId = useId();
+  const mobileCamera = useMobileGraph();
+  const cameraRef = useRef<GraphCameraHandle>(null);
   const setSelectedId = useCallback((id: VersionCourseId | null) => dispatchDetail({ type: "select", id }), []);
   const focus = useMemo(() => buildFocusContext(selectedId), [selectedId]);
   const regionRef = useRef<HTMLElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
-  const panoramaScale = usePanoramicScale(regionRef, canvasRef, fullView, "desktop-window");
+  const closeDetails = () => mobileCamera ? dispatchDetail({ type: "close" }) : setSelectedId(null);
   const hasUserMovedRef = useRef(false);
   const [isDragging, setIsDragging] = useState(false);
   const dragStateRef = useRef<{
@@ -571,6 +567,13 @@ export function ExplorerView() {
     const region = regionRef.current;
     const node = document.querySelector(`[data-version-course-id="${id}"]`);
     if (!region || !(node instanceof HTMLElement)) return;
+    if (mobileCamera) {
+      cameraRef.current?.reveal(node);
+      const top = region.getBoundingClientRect().top + window.scrollY;
+      const chrome = Array.from(document.querySelectorAll<HTMLElement>("[data-sticky-chrome]")).reduce((sum, element) => sum + element.getBoundingClientRect().height, 0);
+      window.scrollTo(0, Math.max(0, top - chrome - 12));
+      return;
+    }
     hasUserMovedRef.current = true;
     const nodeBox = node.getBoundingClientRect();
     const regionBox = region.getBoundingClientRect();
@@ -592,7 +595,7 @@ export function ExplorerView() {
     const overflowBottom = nodeBox.bottom - (visibleBottom - margin);
     if (overflowTop > 0) window.scrollBy(0, -overflowTop);
     else if (overflowBottom > 0) window.scrollBy(0, overflowBottom);
-  }, []);
+  }, [mobileCamera]);
 
   /* Elegir una sugerencia usa la MISMA vía que hacer clic en un nodo: selecciona
      y deja que el foco y el panel existentes hagan su trabajo. */
@@ -654,13 +657,6 @@ export function ExplorerView() {
      sheet y su scroll nativo. El offset se descarta al cambiar de selección,
      así que al reabrir el panel vuelve a su anclaje inicial (no se persiste). */
   const panelRef = useRef<HTMLElement>(null);
-  useVisibleSheet(panelRef, screenVariant !== "desktop" && selectedId !== null);
-  useEffect(() => {
-    if (selectedId && screenVariant !== "desktop") {
-      const frame = requestAnimationFrame(() => revealCourse(selectedId));
-      return () => cancelAnimationFrame(frame);
-    }
-  }, [selectedId, detailExpanded, panoramaScale, screenVariant, revealCourse]);
   const [panelOffset, setPanelOffset] = useState<PanelOffset>({ x: 0, y: 0 });
   const [isPanelDragging, setIsPanelDragging] = useState(false);
   const panelDragRef = useRef<{
@@ -767,9 +763,9 @@ export function ExplorerView() {
      existente para no interferir con el scroll vertical. */
   const centerViewport = useCallback(() => {
     const region = regionRef.current;
-    if (!region || variant === "mobile") return;
+    if (!region || mobileCamera || variant === "mobile") return;
     region.scrollLeft = Math.max(0, (region.scrollWidth - region.clientWidth) / 2);
-  }, [variant]);
+  }, [variant, mobileCamera]);
 
   useLayoutEffect(() => {
     centerViewport();
@@ -782,7 +778,7 @@ export function ExplorerView() {
     });
     observer.observe(region);
     return () => observer.disconnect();
-  }, [centerViewport, panoramaScale]);
+  }, [centerViewport]);
 
   /* Pan del LIENZO completo (nunca de un nodo): desplaza el scroll de la
      región. Solo mouse/pen — en táctil manda el scroll nativo, así que no se
@@ -888,7 +884,6 @@ export function ExplorerView() {
     : [];
 
   const canvasStyle: CSSProperties = {
-    zoom: panoramaScale,
     width: `${geometry[variant].width}rem`,
     height: `${geometry[variant].height}rem`,
   };
@@ -932,7 +927,6 @@ export function ExplorerView() {
           <p>Mapa curricular interactivo</p>
           <h1>Trayectoria Curricular</h1>
         </div>
-        <GraphGestureHelp />
       </header>
 
       <section className={styles.instructions} aria-label="Cómo usar el árbol">
@@ -1160,8 +1154,9 @@ export function ExplorerView() {
         <p className={styles.error}>No se puede representar un currículo con ciclos.</p>
       ) : (
         <div className={styles.workspace}>
-          <section
-            ref={regionRef}
+          <GraphViewport
+            mobile={mobileCamera} fullView={fullView} frame="desktop-window" cameraRef={cameraRef} regionRef={regionRef} contentRef={canvasRef}
+            details={selectedId ? <button type="button" onClick={() => dispatchDetail({ type: "open" })} aria-label={`Ver ficha de ${selectedCourse?.name ?? selectedVersionCourse?.academicCode}`}>Ver ficha</button> : null}
             className={`${styles.treeRegion} ${isDragging ? styles.dragging : ""}`}
             aria-label="Árbol curricular"
             onPointerDown={handlePointerDown}
@@ -1243,15 +1238,17 @@ export function ExplorerView() {
                 </div>
               </div>
             </div>
-          </section>
+          </GraphViewport>
 
-          {selectedVersionCourse && selectedCourse && selectedState ? (
+          {selectedVersionCourse && selectedCourse && selectedState && (!mobileCamera || detailState.detailOpen) ? (
+            <CourseDetails mobile={mobileCamera} onClose={closeDetails}>
             <aside
               ref={panelRef}
-              className={`${styles.detail} ${sheetStyles.sheet} ${isPanelDragging ? styles.panelDragging : ""}`}
-              data-mobile={screenVariant !== "desktop"}
-              data-expanded={detailExpanded}
-              aria-live="polite"
+              className={`${styles.detail} ${isPanelDragging ? styles.panelDragging : ""}`}
+              role="dialog"
+              aria-modal={mobileCamera}
+              aria-labelledby="explorer-course-title"
+              tabIndex={-1}
               style={
                 screenVariant === "desktop" && (panelOffset.x !== 0 || panelOffset.y !== 0)
                   ? { transform: `translate(${panelOffset.x}px, ${panelOffset.y}px)` }
@@ -1262,33 +1259,24 @@ export function ExplorerView() {
               onPointerUp={finishPanelDrag}
               onPointerCancel={finishPanelDrag}
             >
-              <div className={`${styles.mobileDetailHeader} ${sheetStyles.header}`}>
+              <div className={styles.mobileDetailHeader}>
                 <button
                   type="button"
-                  className={`${styles.detailToggle} ${sheetStyles.toggle}`}
-                  aria-expanded={detailExpanded}
-                  aria-controls={detailBodyId}
-                  onClick={() => dispatchDetail({ type: "toggle" })}
-                >
-                  {detailExpanded ? "Contraer" : "Ver detalle"}
-                </button>
-                <button
-                  type="button"
-                  className={`${styles.detailClose} ${sheetStyles.close}`}
-                  onClick={() => setSelectedId(null)}
+                  className={styles.detailClose}
+                  onClick={closeDetails}
                   aria-label="Cerrar detalle"
                 >
                   <span aria-hidden="true">×</span>
                 </button>
                 {/* Cabecera: no monopoliza el arrastre —el panel entero es
                     agarrable— pero sí lleva el grip que lo hace descubrible. */}
-                <div className={`${styles.detailHandle} ${sheetStyles.summary}`}>
+                <div className={styles.detailHandle}>
                   <p className={styles.eyebrow}>Materia seleccionada</p>
-                  <h2>{selectedCourse.name}</h2>
+                  <h2 id="explorer-course-title">{selectedCourse.name}</h2>
                   <p className={styles.detailCode}>{selectedVersionCourse.academicCode}</p>
                 </div>
               </div>
-              <div id={detailBodyId} hidden={!detailExpanded}>
+              <div>
                 <dl data-no-drag>
                   <div><dt>Estado</dt><dd>{stateLabels[selectedState]}</dd></div>
                   <div><dt>Créditos</dt><dd>{selectedVersionCourse.credits}</dd></div>
@@ -1335,6 +1323,7 @@ export function ExplorerView() {
                 </fieldset>
               </div>
             </aside>
+            </CourseDetails>
           ) : null}
         </div>
       )}

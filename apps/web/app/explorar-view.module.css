@@ -781,7 +781,6 @@
   display: contents;
 }
 
-.detailToggle { display: none; }
 
 .detail h2 {
   margin: 0.2rem 0;
@@ -1197,51 +1196,6 @@
    transiciones de hover/foco. Con o sin movimiento se sostiene lo mismo:
    azul = cumplido, ámbar = en curso, continuo = prerrequisito,
    discontinuo = correquisito. */
-/* One sheet, two presentations. Desktop always exposes the same full detail. */
-@media (max-width: 76rem) {
-  .mobileDetailHeader {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto;
-    align-items: center;
-    gap: 0.5rem;
-    padding-bottom: 0.5rem;
-    background: #fff;
-  }
-
-  .detailToggle {
-    display: inline-flex;
-    min-height: 2.75rem;
-    align-items: center;
-    grid-column: 2;
-    grid-row: 1;
-    padding: 0.4rem 0.6rem;
-    color: #24463a;
-    background: #eef4f0;
-    border: 1px solid #b8cac0;
-    border-radius: 0.5rem;
-    font-size: 0.8125rem;
-    font-weight: 750;
-    cursor: pointer;
-  }
-
-  .detailClose { position: static; grid-column: 3; grid-row: 1; }
-  .detailHandle { grid-column: 1; grid-row: 1; min-width: 0; }
-  .detail[data-expanded="false"] { max-height: none; overflow: visible; }
-  .detail[data-expanded="false"] .eyebrow { display: none; }
-  .detail[data-expanded="false"] h2 {
-    display: -webkit-box;
-    overflow: hidden;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    font-size: 1rem;
-    line-height: 1.25;
-  }
-  .detail[data-expanded="false"] .detailCode { font-size: 0.75rem; }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .node,
   .edges path,
