@@ -47,7 +47,9 @@ describe("versioned academic storage", () => {
     records = previewDualActivation(records, programModels, verifiedShared).next;
     expect(records.dual).toBe(true);
     saveAcademicRecords(records);
-    expect(loadAcademicRecords().records).toEqual(records);
+    // Un modo dual guardado sin carrera de origen la adopta al cargarse: el
+    // programa activo. El resto del registro se devuelve intacto.
+    expect(loadAcademicRecords().records).toEqual({ ...records, originProgram: records.activeProgram });
     records = deactivateDual(records);
     saveAcademicRecords(records);
     expect(loadAcademicRecords().records).toEqual(records);

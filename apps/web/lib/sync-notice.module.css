@@ -1,0 +1,48 @@
+/* Aviso discreto y no bloqueante. Se superpone sin capturar el puntero ni
+   robar el foco: informa de algo que ya ocurrió y desaparece solo.
+   Por debajo de los diálogos (300/301), por encima del resto del shell. */
+.notice {
+  position: fixed;
+  z-index: 290;
+  right: 1rem;
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  width: min(26rem, calc(100vw - 2rem));
+  margin: 0;
+  padding: 0.7rem 0.9rem;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-inline-start: 0.25rem solid var(--brand);
+  border-radius: 0.55rem;
+  box-shadow: 0 0.5rem 1.5rem rgb(23 33 27 / 18%);
+  font-size: 0.85rem;
+  line-height: 1.4;
+  pointer-events: none;
+  animation: noticeIn 160ms ease-out;
+}
+
+@keyframes noticeIn {
+  from {
+    opacity: 0;
+    transform: translateY(0.4rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (max-width: 42rem) {
+  .notice {
+    right: 0.5rem;
+    left: 0.5rem;
+    width: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notice {
+    animation: none;
+  }
+}

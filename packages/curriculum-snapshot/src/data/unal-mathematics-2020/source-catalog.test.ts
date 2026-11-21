@@ -26,6 +26,29 @@ describe("Acuerdo 038 de 2020 source transcription", () => {
     }
     expect(mathematicsSourceCourses.reduce((sum, course) => sum + course.credits, 0)).toBeGreaterThan(140);
   });
+  /* Los créditos de estas 26 optativas NO están verificados contra el PDF del
+     Acuerdo 038 de 2020: no se dispone del documento y el portal normativo
+     responde con reCAPTCHA. Dos comprobaciones indirectas sostienen el resto
+     del catálogo —la tabla oficial por componente fija las 20 obligatorias en
+     40 y 48 créditos, y el acuerdo de Computación corrobora 28 asignaturas
+     compartidas—, pero ninguna alcanza a estas. Quedan fijadas en 4 créditos
+     para que nadie las mueva en silencio: al cotejar el PDF, actualizar aquí
+     y en `docs/curriculum-sources/acuerdo-0038-2020-auditoria.md`. */
+  it("pins the 26 electives still pending verification against the agreement PDF", () => {
+    const pending = [
+      "1000017-M", "1000020-M", "3006889", "3006890", "3006893", "3006895", "3006896", "3006897",
+      "3006898", "3006899", "3006901", "3006902", "3006903", "3006908", "3006910", "3006912",
+      "3009354", "3009597", "3010586", "3010594", "3010635", "3010670", "3010671", "3010767",
+      "3010789", "3010802",
+    ];
+    expect(pending).toHaveLength(26);
+    for (const code of pending) {
+      const course = byCode.get(code);
+      expect(course, code).toBeDefined();
+      expect(course!.mandatory, code).toBe(false);
+      expect(course!.credits, code).toBe(4);
+    }
+  });
   it("resolves references internally or to the explicitly documented external course", () => {
     const external = new Set<string>(mathematicsExternalReferences.map(course => course.code));
     const externalReferences: string[] = [];

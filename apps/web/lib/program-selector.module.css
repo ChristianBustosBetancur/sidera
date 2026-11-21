@@ -21,6 +21,15 @@
 .panel h2 { margin: .25rem 0; color: var(--brand); font-size: .95rem; }
 .panel p { margin: .5rem 0; }
 .panel button { min-height: 2.75rem; padding: .5rem .75rem; color: white; background: var(--brand); border: 0; border-radius: .4rem; cursor: pointer; }
+/* Acción secundaria dentro del panel: no compite con el botón principal. */
+.linkAction { min-height: 2.75rem; padding: .5rem .75rem; color: var(--brand); background: var(--surface); border: 1px solid var(--line); border-radius: .4rem; font: inherit; font-size: .8rem; font-weight: 700; cursor: pointer; }
+.linkAction:hover:not(:disabled) { border-color: var(--brand); }
+.linkAction:disabled { opacity: .55; cursor: not-allowed; }
+.linkAction:focus-visible { outline: 3px solid #2266aa; outline-offset: 2px; }
+.originChoice { display: grid; gap: .3rem; margin-block: .75rem; }
+.originChoice select { min-height: 2.75rem; width: 100%; font: inherit; }
+.simulatedNote { margin: 0; color: var(--muted); font-size: .75rem; line-height: 1.3; }
+
 .external { display: flex; align-items: start; gap: .5rem; margin-block: .75rem; }
 .external input { width: 1.3rem; height: 1.3rem; flex-shrink: 0; accent-color: var(--brand); }
 @media (max-width: 42rem) { .panel { position: static; width: 100%; max-height: 50dvh; } .settings { width: 100%; } .selector { width: 100%; } .selector select { width: 100%; } }

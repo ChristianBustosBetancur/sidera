@@ -166,6 +166,13 @@
 }
 
 .confirm:disabled { opacity: .5; cursor: not-allowed; }
+
+/* La casilla va pegada a los botones, no entre el contenido: es una decisión
+   sobre la confirmación misma, no sobre los cambios que se listan. */
+.remember { display: flex; align-items: start; gap: .5rem; margin-top: 1rem; color: var(--muted); font-size: .82rem; line-height: 1.35; cursor: pointer; }
+.remember input { width: 1.15rem; height: 1.15rem; flex-shrink: 0; margin: 0; accent-color: var(--brand); }
+.remember input:focus-visible { outline: 3px solid #2266aa; outline-offset: 2px; }
+
 .conflict { display: grid; gap: .3rem; margin-block: .75rem; }
 .conflict select { min-height: 2.75rem; width: 100%; font: inherit; }
 

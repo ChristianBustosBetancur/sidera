@@ -7,6 +7,10 @@ export type AcademicRecords = {
   formatVersion: 2;
   activeProgram: string;
   dual: boolean;
+  /* Carrera real del estudiante. Con el modo dual activo, los demás planes
+     no pueden retirar automáticamente una matrícula compartida. Los créditos
+     siguen evaluándose con el contexto independiente de cada plan. */
+  originProgram?: string;
   plans: Record<string, ProgramRecord>;
   sharedFacts: Record<string, TrajectoryMark>;
 };
@@ -79,18 +83,30 @@ function write(preview: AcademicPreview, model: ProgramModel, courseId: CourseId
 function start(records: AcademicRecords): AcademicPreview {
   return { next: clone(records), conflicts: [], shared: [], reconciliations: [], changes: [], requiresConfirmation: false };
 }
+function preservedInProgress(records: AcademicRecords, model: ProgramModel): VersionCourseId[] {
+  if (!records.dual || records.originProgram === undefined || model.id === records.originProgram) return [];
+  const record = programRecord(records, model);
+  return model.context.versionCourses
+    .filter(course => record.marks[course.id] === "IN_PROGRESS" && records.sharedFacts[course.courseId] === "IN_PROGRESS")
+    .map(course => course.id);
+}
 function reconcile(preview: AcademicPreview, models: readonly ProgramModel[]) {
   for (const model of models) {
     const record = programRecord(preview.next, model);
     const first = model.context.versionCourses[0];
     if (!first) continue;
-    const result = reconcileTrajectory({ versionCourseId: first.id, mark: record.marks[first.id] ?? "UNMARKED" }, recordContext(record, model.context), recordTrajectory(record, model.context));
+    const result = reconcileTrajectory({ versionCourseId: first.id, mark: record.marks[first.id] ?? "UNMARKED" }, recordContext(record, model.context), recordTrajectory(record, model.context), preservedInProgress(preview.next, model));
     for (const invalidation of result.invalidations) record.marks[invalidation.versionCourseId] = "UNMARKED";
     if (result.invalidations.length) {
       preview.next.plans[model.context.planVersionId] = record;
       preview.requiresConfirmation = true;
     }
-    preview.reconciliations.push({ programId: model.id, result });
+    preview.reconciliations.push({ programId: model.id, result: {
+      ...result,
+      // La trayectoria es un conjunto sin orden temporal; devolvemos el mismo
+      // orden de serialización que los registros que se aplicarán al confirmar.
+      nextTrajectory: recordTrajectory(record, model.context),
+    } });
     // Invalidations are effects in this plan. Never overwrite sharedFacts here.
   }
 }
@@ -103,7 +119,11 @@ export function previewAcademicMark(records: AcademicRecords, models: readonly P
   if (!active.course && mark === "IN_PROGRESS") throw new Error("External prerequisite records completion only");
   const shared = records.dual && verifiedShared.includes(courseId);
   for (const target of targets.filter(target => shared || target.model.id === programId)) write(preview, target.model, courseId, mark);
-  if (shared) { preview.next.sharedFacts[courseId] = mark; preview.requiresConfirmation = true; }
+  // Reflejar el hecho compartido no es, por sí solo, motivo para confirmar:
+  // es lo que el estudiante pidió al vincular los planes. La confirmación la
+  // decide `reconcile`, que la exige cuando el cambio invalida otras
+  // asignaturas en alguno de los programas.
+  if (shared) preview.next.sharedFacts[courseId] = mark;
   reconcile(preview, models.filter(model => targets.some(target => target.model.id === model.id && (shared || model.id === programId))));
   return preview;
 }

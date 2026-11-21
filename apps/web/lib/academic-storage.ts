@@ -13,7 +13,15 @@ export function loadAcademicRecords(): { records: AcademicRecords; writable: boo
     const raw = localStorage.getItem(ACADEMIC_STORAGE_KEY);
     if (raw !== null) {
       const parsed = academicRecordsSchema.safeParse(JSON.parse(raw));
-      if (parsed.success && programs.some(program => program.id === parsed.data.activeProgram)) return { records: parsed.data, writable: true };
+      if (parsed.success && programs.some(program => program.id === parsed.data.activeProgram)) {
+        // Migración: un modo dual guardado antes de distinguir carrera real de
+        // carrera simulada adopta el programa activo como origen. No se
+        // interrumpe al estudiante para preguntárselo, y puede cambiarlo.
+        const records = parsed.data.dual && parsed.data.originProgram === undefined
+          ? { ...parsed.data, originProgram: parsed.data.activeProgram }
+          : parsed.data;
+        return { records, writable: true };
+      }
       // Preserve an unsupported/newer or damaged payload, rather than replacing it.
       return { records: emptyAcademicRecords(), writable: false };
     }

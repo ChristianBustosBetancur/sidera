@@ -11,6 +11,7 @@ import {
   type ComponentCreditProgress,
   deriveVersionCourseState,
   type DerivedCourseState,
+  evaluateVersionCourseEligibility,
   type GroupingCreditProgress,
   type StudentTrajectory,
 } from "@sidera/curriculum-engine";
@@ -27,11 +28,14 @@ import {
   satisfiedProgressBarArguments,
 } from "../lib/curriculum-data";
 import { type Mark, useTrajectory } from "../lib/trajectory";
+import { requirementShortfall } from "../lib/sync-notice";
+import { isSimulatedProgram, marksAreAvailable } from "../lib/dual-roles";
+import { electiveSurplus, electivesFullNote, surplusNote } from "../lib/elective-surplus";
 import styles from "./curriculum-view.module.css";
 import { useDisplayMode } from "../lib/display-mode";
 
 function createCurriculumView(data: AcademicProgramData) {
-const { snapshot, coursesById, blockingReasons, requirementLines, unmodeledComponentsNote } = data;
+const { snapshot, coursesById, courseReference, blockingReasons, requirementLines, unmodeledComponentsNote } = data;
 const groupingsByComponentId = new Map(
   snapshot.components.map((component) => [
     component.id,
@@ -95,21 +99,19 @@ function ProgressBar({
             : presentation.ariaLabel
         }
       >
-        {/* Los segmentos solo existen cuando tienen créditos detrás: un tramo
-            de ancho 0 no aporta información y, en el caso de completados,
-            dejaba un resto de resplandor pegado al borde izquierdo. */}
-        {presentation.completedRatio > 0 ? (
-          <span
-            className={styles.progressCompleted}
-            style={{ width: `${presentation.completedRatio * 100}%` }}
-          />
-        ) : null}
-        {presentation.inProgressRatio > 0 ? (
-          <span
-            className={styles.progressInProgress}
-            style={{ width: `${presentation.inProgressRatio * 100}%` }}
-          />
-        ) : null}
+        {/* Permanecen montados para interpolar también desde/hasta cero. Un
+            segmento vacío no ocupa ancho ni conserva un resplandor visible. */}
+        <span
+          className={styles.progressCompleted}
+          data-empty={presentation.completedRatio === 0}
+          aria-hidden="true"
+          style={{ width: `${presentation.completedRatio * 100}%` }}
+        />
+        <span
+          className={styles.progressInProgress}
+          aria-hidden="true"
+          style={{ width: `${presentation.inProgressRatio * 100}%` }}
+        />
         {projection ? (
           <span
             className={styles.progressProjectionMarker}
@@ -130,14 +132,17 @@ function CourseCard({
   versionCourse,
   state,
   trajectory,
+  surplus,
   onMark,
 }: {
   versionCourse: VersionCourse;
   state: DerivedCourseState;
   trajectory: StudentTrajectory;
+  /** Optativa marcada que no cabe en el cupo de su agrupación. */
+  surplus: boolean;
   onMark: (mark: Mark) => void;
 }) {
-  const { evaluationContext } = useTrajectory();
+  const { evaluationContext, records, program } = useTrajectory();
   const course = coursesById.get(versionCourse.courseId);
   const requirementText = versionCourse.requirements
     ? requirementLines(versionCourse.requirements)
@@ -153,6 +158,23 @@ function CourseCard({
     derivedState.eligibility.requirementEvaluation
       ? blockingReasons(derivedState.eligibility.requirementEvaluation)
       : [];
+  /* En un plan simulado la matrícula es real en la carrera de origen: aquí no
+     se retira, se advierte. El aviso vive en la tarjeta para que se vea al
+     consultar la asignatura, no solo al momento de marcarla. */
+  const simulated = isSimulatedProgram(records, program.id);
+  const preservedEligibility =
+    simulated && currentMark !== "UNMARKED"
+      ? evaluateVersionCourseEligibility(versionCourse.id, evaluationContext, trajectory)
+      : undefined;
+  const preservedShortfall =
+    preservedEligibility && !preservedEligibility.satisfied &&
+    preservedEligibility.requirementEvaluation
+      ? requirementShortfall(blockingReasons(preservedEligibility.requirementEvaluation))
+      : undefined;
+  /* Un hecho compartido se decide en la carrera de origen, así que su tarjeta
+     nunca queda sin acciones: aunque este plan lo considere bloqueado, el
+     estudiante tiene que poder corregirlo desde cualquiera de los dos. */
+  const marksAvailable = marksAreAvailable(records, versionCourse.courseId, blocked);
 
   return (
     <article data-grouping={versionCourse.groupingId} className={`${styles.courseCard} ${styles[state.toLowerCase()]}`}>
@@ -170,6 +192,13 @@ function CourseCard({
         <span className={styles.stateBadge} data-state={state}>
           {stateLabels[state]}
         </span>
+        {/* No cabe en el cupo optativo de su agrupación: sigue cursada y
+            aprobada, pero no suma en esta barra. */}
+        {surplus ? (
+          <span className={styles.surplusBadge} title="No cabe en el cupo de optativas de esta agrupación, así que no suma en su barra.">
+            Excedente
+          </span>
+        ) : null}
       </div>
 
       {requirementText.length > 0 ? (
@@ -181,6 +210,12 @@ function CourseCard({
       ) : (
         <p className={styles.noRequirements}>Sin prerrequisitos ni correquisitos.</p>
       )}
+
+      {preservedShortfall ? (
+        <p className={styles.simulatedWarning} role="note">
+          {preservedShortfall} · Se mantiene {currentMark === "IN_PROGRESS" ? "«En curso»" : "«Completada»"} porque {program.label} es un plan simulado.
+        </p>
+      ) : null}
 
       {blocked ? (
         <section className={styles.blockingReasons}>
@@ -214,7 +249,7 @@ function CourseCard({
           type="button"
           className={currentMark === "IN_PROGRESS" ? styles.selectedAction : undefined}
           aria-pressed={currentMark === "IN_PROGRESS"}
-          disabled={blocked}
+          disabled={!marksAvailable}
           onClick={() => onMark("IN_PROGRESS")}
         >
           En curso
@@ -223,7 +258,7 @@ function CourseCard({
           type="button"
           className={currentMark === "COMPLETED" ? styles.selectedAction : undefined}
           aria-pressed={currentMark === "COMPLETED"}
-          disabled={blocked}
+          disabled={!marksAvailable}
           onClick={() => onMark("COMPLETED")}
         >
           Completada
@@ -248,6 +283,22 @@ function GroupingSection({
   progress: GroupingCreditProgress;
   onMark: (versionCourseId: VersionCourseId, mark: Mark) => void;
 }) {
+  /* El excedente es una lectura del mismo reparto que ya hizo el motor: deja
+     ver qué optativa quedó fuera del cupo y por qué la barra no se mueve. */
+  const surplus = useMemo(
+    () =>
+      electiveSurplus({
+        courses: versionCourses,
+        requiredCredits: grouping.requiredCredits,
+        completed: new Set(trajectory.completedVersionCourseIds),
+        inProgress: new Set(trajectory.inProgressVersionCourseIds),
+      }),
+    [versionCourses, grouping.requiredCredits, trajectory],
+  );
+  const surplusCourses = useMemo(() => new Set(surplus.surplus), [surplus]);
+  const fullNote = electivesFullNote(surplus, courseReference);
+  const excess = surplusNote(surplus);
+
   return (
     <section data-grouping={grouping.id} className={styles.grouping} aria-labelledby={`grouping-${grouping.id}`}>
       <div className={styles.groupingHeading}>
@@ -257,6 +308,11 @@ function GroupingSection({
       <ProgressBar
         {...satisfiedProgressBarArguments(progress, progress.requiredCredits)}
       />
+      {excess || fullNote ? (
+        <p className={styles.groupingSurplus}>
+          {[excess, fullNote].filter(Boolean).join(" · ")}
+        </p>
+      ) : null}
       <div className={styles.courseGrid}>
         {versionCourses.map((versionCourse) => (
           <CourseCard
@@ -264,6 +320,7 @@ function GroupingSection({
             versionCourse={versionCourse}
             state={states.get(versionCourse.id) ?? "BLOCKED"}
             trajectory={trajectory}
+            surplus={surplusCourses.has(versionCourse.id)}
             onMark={(mark) => onMark(versionCourse.id, mark)}
           />
         ))}
