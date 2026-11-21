@@ -66,8 +66,14 @@ export function reconcileTrajectory(
   change: TrajectoryChange,
   context: CurriculumEvaluationContext,
   trajectory: StudentTrajectory,
+  preservedInProgressVersionCourseIds: readonly VersionCourseId[] = [],
 ): TrajectoryReconciliation {
   let current = applyChange(trajectory, change);
+  // El coordinador dual limita esta excepción a matrículas compartidas del
+  // plan simulado. Se conservan DURANTE el punto fijo: pueden sostener
+  // correquisitos concurrentes. Los demás llamadores mantienen la política
+  // ordinaria al no pasar ningún identificador.
+  const preserved = new Set(preservedInProgressVersionCourseIds);
 
   /* Los mapas del plan no cambian durante la reconciliación: se construyen una
      vez y cada ronda solo rehace los dos conjuntos de la trayectoria. */
@@ -86,6 +92,7 @@ export function reconcileTrajectory(
        las retiradas se aplican al final. Así ninguna materia de la ronda ve un
        estado intermedio y el resultado no depende del orden de la lista. */
     for (const versionCourseId of current.inProgressVersionCourseIds) {
+      if (preserved.has(versionCourseId)) continue;
       const eligibility = evaluateEligibilityWithIndexes(
         versionCourseId,
         context,
@@ -122,7 +129,12 @@ export function reconcileTrajectory(
      ver. */
   const finalIndexes = buildIndexes(current);
   const warnings: TrajectoryWarning[] = [];
-  for (const versionCourseId of current.completedVersionCourseIds) {
+  const warningCandidates = [
+    ...current.completedVersionCourseIds.map(versionCourseId => ({ versionCourseId, mark: "COMPLETED" as const })),
+    ...current.inProgressVersionCourseIds.filter(id => preserved.has(id))
+      .map(versionCourseId => ({ versionCourseId, mark: "IN_PROGRESS" as const })),
+  ];
+  for (const { versionCourseId, mark } of warningCandidates) {
     const eligibility = evaluateEligibilityWithIndexes(
       versionCourseId,
       context,
@@ -131,7 +143,7 @@ export function reconcileTrajectory(
     if (eligibility.satisfied) continue;
     warnings.push({
       versionCourseId,
-      mark: "COMPLETED",
+      mark,
       blocking: eligibility.requirementEvaluation
         ? collectBlockingEvaluations(eligibility.requirementEvaluation)
         : [],

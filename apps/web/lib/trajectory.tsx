@@ -1,7 +1,7 @@
 "use client";
 
 import type { CourseId, VersionCourseId } from "@sidera/curriculum-domain";
-import { deriveVersionCourseState, programRecord, recordTrajectory, recordContext, previewAcademicMark, previewDualActivation, deactivateDual, reconcileTrajectory, type AcademicRecords, type AcademicPreview, type SharedConflict, type CurriculumEvaluationContext, type DerivedCourseState, type StudentTrajectory, type TrajectoryReconciliation } from "@sidera/curriculum-engine";
+import { deriveVersionCourseState, programRecord, recordTrajectory, recordContext, previewAcademicMark, previewDualActivation, deactivateDual, type AcademicRecords, type AcademicPreview, type SharedConflict, type CurriculumEvaluationContext, type DerivedCourseState, type StudentTrajectory, type TrajectoryReconciliation } from "@sidera/curriculum-engine";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { programs, programModels, verifiedShared, type AcademicProgramData } from "./programs";
 import { emptyAcademicRecords, loadAcademicRecords, saveAcademicRecords } from "./academic-storage";
@@ -140,15 +140,22 @@ export function TrajectoryProvider({ children }: { children: ReactNode }) {
       ? { ...current, preview: activationPreview(origin, resolutions) }
       : current);
   }
-  function previewMarkCourse(id: VersionCourseId, mark: Mark) {
-    return reconcileTrajectory({ versionCourseId: id, mark }, evaluationContext, trajectory);
-  }
-  function markCourse(id: VersionCourseId, mark: Mark) {
+  function academicMarkPreview(id: VersionCourseId, mark: Mark) {
     const course = program.versionCoursesById.get(id);
     if (!course) throw new Error("Unknown course in active plan");
-    const result = previewMarkCourse(id, mark);
-    apply(previewAcademicMark(records, programModels, verifiedShared, program.id, course.courseId, mark));
-    return result;
+    return previewAcademicMark(records, programModels, verifiedShared, program.id, course.courseId, mark);
+  }
+  function activeResult(preview: AcademicPreview, id: VersionCourseId, mark: Mark): TrajectoryReconciliation {
+    const result = preview.reconciliations.find(entry => entry.programId === program.id)!.result;
+    return { ...result, requested: { versionCourseId: id, mark } };
+  }
+  function previewMarkCourse(id: VersionCourseId, mark: Mark) {
+    return activeResult(academicMarkPreview(id, mark), id, mark);
+  }
+  function markCourse(id: VersionCourseId, mark: Mark) {
+    const preview = academicMarkPreview(id, mark);
+    apply(preview);
+    return activeResult(preview, id, mark);
   }
   function toggleDual() {
     if (!ready || pending) return;
@@ -194,7 +201,7 @@ export function TrajectoryProvider({ children }: { children: ReactNode }) {
       remember={pending.kind === "mark" && records.dual ? remember : undefined}
       onRememberChange={setRemember}
       origin={pending.kind === "activation" && records.originProgram === undefined ? originChoice ?? program.id : undefined}
-      originProgram={pending.kind === "activation" ? originChoice ?? program.id : records.originProgram}
+      originProgram={pending.kind === "activation" ? originChoice ?? program.id : records.dual ? records.originProgram : undefined}
       onOriginChange={chooseOrigin}
       onCancel={cancel} onConfirm={() => {
         if (pending.preview.conflicts.length > 0) return;

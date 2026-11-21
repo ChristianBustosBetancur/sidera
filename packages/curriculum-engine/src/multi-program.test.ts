@@ -24,6 +24,65 @@ const initial = (): AcademicRecords => ({ formatVersion: 2, activeProgram: "a", 
 const edit = (records: AcademicRecords, program: string, courseId: CourseId, mark: "COMPLETED" | "IN_PROGRESS" | "UNMARKED") => previewAcademicMark(records, models, [shared], program, courseId, mark);
 
 describe("pure multi-program coordination", () => {
+  it("preserves concurrent prerequisites during reconciliation and evaluates warnings on the final state", () => {
+    const concurrent: ProgramModel = { ...b, context: { ...b.context, versionCourses: b.context.versionCourses.map(course => course.courseId === dependent
+      ? { ...course, requirements: { type: "COURSE_COMPLETED_OR_CONCURRENT" as const, versionCourseId: "b:shared" as VersionCourseId } }
+      : course) } };
+    const records: AcademicRecords = { ...initial(), originProgram: "a", plans: {
+      a: { marks: { "a:shared": "IN_PROGRESS" }, externalCompleted: {} },
+      b: { marks: { "b:dependent": "IN_PROGRESS" }, externalCompleted: {} },
+    } };
+    const before = structuredClone(records);
+    const preview = previewDualActivation(records, [a, concurrent], [shared]);
+    const result = preview.reconciliations.find(entry => entry.programId === "b")!.result;
+    expect(preview.next.plans.b!.marks["b:dependent"]).toBe("IN_PROGRESS");
+    expect(result.invalidations).toEqual([]);
+    expect(result.warnings.map(item => item.versionCourseId)).toEqual(["b:shared"]);
+    expect(result.nextTrajectory).toEqual(recordTrajectory(preview.next.plans.b!, concurrent.context));
+    expect(evaluateVersionCourseEligibility("b:dependent" as VersionCourseId, concurrent.context, result.nextTrajectory).satisfied).toBe(true);
+    expect(records).toEqual(before);
+  });
+
+  it("still retires an ineligible non-shared course and keeps completed warnings accurate", () => {
+    const unrelated = { ...b.context.versionCourses[2]!, id: "b:other" as VersionCourseId, courseId: "institution:other" as CourseId,
+      requirements: { type: "COURSE_COMPLETED" as const, versionCourseId: "b:root" as VersionCourseId } };
+    const concurrent: ProgramModel = { ...b, context: { ...b.context, versionCourses: [...b.context.versionCourses.map(course => course.courseId === dependent
+      ? { ...course, requirements: { type: "COURSE_COMPLETED_OR_CONCURRENT" as const, versionCourseId: "b:shared" as VersionCourseId } }
+      : course), unrelated] } };
+    const records: AcademicRecords = { ...initial(), originProgram: "a", plans: {
+      a: { marks: { "a:shared": "IN_PROGRESS" }, externalCompleted: {} },
+      b: { marks: { "b:dependent": "COMPLETED", "b:other": "IN_PROGRESS" }, externalCompleted: {} },
+    } };
+    const preview = previewDualActivation(records, [a, concurrent], [shared]);
+    const result = preview.reconciliations.find(entry => entry.programId === "b")!.result;
+    expect(result.invalidations.map(item => item.versionCourseId)).toEqual(["b:other"]);
+    expect(result.warnings.map(item => item.versionCourseId)).toEqual(["b:shared"]);
+    expect(preview.next.plans.b!.marks["b:other"]).toBe("UNMARKED");
+    expect(result.nextTrajectory).toEqual(recordTrajectory(preview.next.plans.b!, concurrent.context));
+    expect(preview.requiresConfirmation).toBe(true);
+  });
+
+  it("restores ordinary reconciliation after deactivation, despite retained origin and shared facts", () => {
+    const linked = previewDualActivation({ ...edit(initial(), "a", shared, "IN_PROGRESS").next, originProgram: "a" }, models, [shared]).next;
+    const disabled = deactivateDual(linked);
+    const preview = edit(disabled, "b", exclusive, "UNMARKED");
+    expect(disabled.plans.b!.marks["b:shared"]).toBe("IN_PROGRESS");
+    expect(preview.next.plans.b!.marks["b:shared"]).toBe("UNMARKED");
+    expect(preview.next.plans.a!.marks["a:shared"]).toBe("IN_PROGRESS");
+    expect(preview.reconciliations[0]!.result.invalidations.map(item => item.versionCourseId)).toEqual(["b:shared"]);
+    expect(preview.requiresConfirmation).toBe(true);
+  });
+
+  it.each(["UNMARKED", "COMPLETED"] as const)("does not exempt an in-progress record from reconciliation when the shared fact is %s", fact => {
+    const records: AcademicRecords = { ...initial(), dual: true, originProgram: "a", sharedFacts: { [shared]: fact }, plans: {
+      b: { marks: { "b:shared": "IN_PROGRESS" }, externalCompleted: {} },
+    } };
+    const preview = edit(records, "b", exclusive, "UNMARKED");
+    expect(preview.next.plans.b!.marks["b:shared"]).toBe("UNMARKED");
+    expect(preview.requiresConfirmation).toBe(true);
+    expect(preview.reconciliations[0]!.result.warnings).toEqual([]);
+  });
+
   it("evaluates known external completion without giving it credits, and rejects unknown references", () => {
     const original = a.context.versionCourses[0]!;
     const context = { ...a.context, versionCourses: [{ ...original, requirements: { type: "EXTERNAL_COURSE_COMPLETED" as const, courseId: shared } }], externalCourses: [{ id: shared, name: "Shared external course", universityId: "institution" as import("@sidera/curriculum-domain").UniversityId }], completedExternalCourseIds: [shared] };
