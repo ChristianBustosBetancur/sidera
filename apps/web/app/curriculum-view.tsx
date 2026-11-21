@@ -99,21 +99,19 @@ function ProgressBar({
             : presentation.ariaLabel
         }
       >
-        {/* Los segmentos solo existen cuando tienen créditos detrás: un tramo
-            de ancho 0 no aporta información y, en el caso de completados,
-            dejaba un resto de resplandor pegado al borde izquierdo. */}
-        {presentation.completedRatio > 0 ? (
-          <span
-            className={styles.progressCompleted}
-            style={{ width: `${presentation.completedRatio * 100}%` }}
-          />
-        ) : null}
-        {presentation.inProgressRatio > 0 ? (
-          <span
-            className={styles.progressInProgress}
-            style={{ width: `${presentation.inProgressRatio * 100}%` }}
-          />
-        ) : null}
+        {/* Permanecen montados para interpolar también desde/hasta cero. Un
+            segmento vacío no ocupa ancho ni conserva un resplandor visible. */}
+        <span
+          className={styles.progressCompleted}
+          data-empty={presentation.completedRatio === 0}
+          aria-hidden="true"
+          style={{ width: `${presentation.completedRatio * 100}%` }}
+        />
+        <span
+          className={styles.progressInProgress}
+          aria-hidden="true"
+          style={{ width: `${presentation.inProgressRatio * 100}%` }}
+        />
         {projection ? (
           <span
             className={styles.progressProjectionMarker}

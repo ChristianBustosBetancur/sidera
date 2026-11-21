@@ -130,6 +130,15 @@
   border-top: 1px solid var(--line);
 }
 
+.progressCompleted,
+.progressInProgress {
+  transition: width 240ms ease;
+}
+
+.progressCompleted[data-empty="true"] {
+  box-shadow: none;
+}
+
 .progressCompleted {
   position: relative;
   flex: none;
@@ -719,6 +728,7 @@
   .progressInProgress,
   .progressStageMastered .progressCompleted::after {
     animation: none;
+    transition: none;
   }
 
   /* El plegado sigue funcionando; solo deja de interpolarse el giro. La
