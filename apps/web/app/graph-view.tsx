@@ -515,7 +515,7 @@ export function GraphView() {
 
       <div className={styles.graphWorkspace}>
         <GraphViewport
-          mobile={mobile} fullView={fullView} frame="all-columns" cameraRef={cameraRef} regionRef={graphRegionRef} contentRef={canvasRef}
+          directCamera mobile={mobile} fullView={fullView} frame="all-columns" cameraRef={cameraRef} regionRef={graphRegionRef} contentRef={canvasRef}
           details={selectedId ? <button type="button" onClick={() => dispatchDetail({ type: "open" })} aria-label={`Ver ficha de ${selectedCourse?.name ?? selectedVersionCourse?.academicCode}`}>Ver ficha</button> : null}
           className={`${styles.graphRegion} ${isDragging ? styles.dragging : ""}`}
           aria-label="Grafo curricular"

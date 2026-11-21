@@ -21,15 +21,35 @@ type Props = ComponentProps<"section"> & {
   mobile: boolean; fullView: boolean; frame: PanoramaFrame; cameraRef: Ref<GraphCameraHandle>;
   regionRef: RefObject<HTMLElement | null>; contentRef: RefObject<HTMLDivElement | null>;
   details?: ReactNode;
+  directCamera?: boolean;
 };
 
-export function GraphViewport({ mobile, fullView, frame, cameraRef, regionRef, contentRef, children, details, ...desktopProps }: Props) {
+export function GraphViewport({ mobile, fullView, frame, cameraRef, regionRef, contentRef, children, details, directCamera = false, ...desktopProps }: Props) {
   const [camera, setCamera] = useState<Camera>({ x: 0, y: 0, scale: 1 });
   const cameraValue = useRef(camera);
+  const worldRef = useRef<HTMLDivElement>(null);
   const initial = useRef(camera);
   const bounds = useRef<CameraBounds | null>(null);
   const gesture = useRef(new CameraGesture());
-  const apply = useCallback((value: Camera) => { cameraValue.current = value; setCamera(value); }, []);
+  const apply = useCallback((value: Camera) => {
+    const previous = cameraValue.current;
+    if (directCamera && previous === value) return;
+    cameraValue.current = value;
+    if (!directCamera) { setCamera(value); return; }
+    // One owner for the transform and diagnostic coordinates. React reads the
+    // same canonical value on selection/detail renders, so it cannot roll back
+    // an in-flight gesture. Controls only need renders at their disabled limits.
+    if (worldRef.current) worldRef.current.style.transform = `translate(${value.x}px, ${value.y}px) scale(${value.scale})`;
+    const host = regionRef.current;
+    if (host) {
+      host.dataset.cameraScale = String(value.scale);
+      host.dataset.cameraX = String(value.x);
+      host.dataset.cameraY = String(value.y);
+    }
+    const minimum = bounds.current?.minScale ?? 0;
+    if ((previous.scale >= 3) !== (value.scale >= 3) ||
+        (previous.scale <= minimum + .000001) !== (value.scale <= minimum + .000001)) setCamera(value);
+  }, [directCamera, regionRef]);
   const reset = useCallback(() => { gesture.current.clear(); apply(initial.current); }, [apply]);
   useLayoutEffect(() => {
     if (!mobile) return;
@@ -68,7 +88,7 @@ export function GraphViewport({ mobile, fullView, frame, cameraRef, regionRef, c
       {details ? <span className={styles.details}>{details}</span> : null}
     </div>
     <section ref={regionRef} className={styles.viewport} aria-label={desktopProps["aria-label"]} tabIndex={0}
-      data-graph-camera data-camera-scale={camera.scale} data-camera-x={camera.x} data-camera-y={camera.y}
+      data-graph-camera data-camera-scale={cameraValue.current.scale} data-camera-x={cameraValue.current.x} data-camera-y={cameraValue.current.y}
       onScroll={event => {
         // Keyboard focus can trigger native scrolling even on overflow:hidden.
         // Translation belongs exclusively to the camera.
@@ -113,7 +133,7 @@ export function GraphViewport({ mobile, fullView, frame, cameraRef, regionRef, c
           event.preventDefault(); if (event.key === "0" || event.key === "Home") reset(); else zoom(event.key === "-" ? 1 / 1.3 : 1.3);
         }
       }}>
-      <div className={styles.world} style={{ transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.scale})` }}>{children}</div>
+      <div ref={worldRef} className={styles.world} style={{ transform: `translate(${cameraValue.current.x}px, ${cameraValue.current.y}px) scale(${cameraValue.current.scale})` }}>{children}</div>
     </section>
   </div>;
 }
