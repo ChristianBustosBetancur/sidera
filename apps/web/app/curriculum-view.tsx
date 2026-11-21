@@ -30,11 +30,12 @@ import {
 import { type Mark, useTrajectory } from "../lib/trajectory";
 import { requirementShortfall } from "../lib/sync-notice";
 import { isSimulatedProgram, marksAreAvailable } from "../lib/dual-roles";
+import { electiveSurplus, electivesFullNote, surplusNote } from "../lib/elective-surplus";
 import styles from "./curriculum-view.module.css";
 import { useDisplayMode } from "../lib/display-mode";
 
 function createCurriculumView(data: AcademicProgramData) {
-const { snapshot, coursesById, blockingReasons, requirementLines, unmodeledComponentsNote } = data;
+const { snapshot, coursesById, courseReference, blockingReasons, requirementLines, unmodeledComponentsNote } = data;
 const groupingsByComponentId = new Map(
   snapshot.components.map((component) => [
     component.id,
@@ -133,11 +134,14 @@ function CourseCard({
   versionCourse,
   state,
   trajectory,
+  surplus,
   onMark,
 }: {
   versionCourse: VersionCourse;
   state: DerivedCourseState;
   trajectory: StudentTrajectory;
+  /** Optativa marcada que no cabe en el cupo de su agrupación. */
+  surplus: boolean;
   onMark: (mark: Mark) => void;
 }) {
   const { evaluationContext, records, program } = useTrajectory();
@@ -190,6 +194,13 @@ function CourseCard({
         <span className={styles.stateBadge} data-state={state}>
           {stateLabels[state]}
         </span>
+        {/* No cabe en el cupo optativo de su agrupación: sigue cursada y
+            aprobada, pero no suma en esta barra. */}
+        {surplus ? (
+          <span className={styles.surplusBadge} title="No cabe en el cupo de optativas de esta agrupación, así que no suma en su barra.">
+            Excedente
+          </span>
+        ) : null}
       </div>
 
       {requirementText.length > 0 ? (
@@ -274,6 +285,22 @@ function GroupingSection({
   progress: GroupingCreditProgress;
   onMark: (versionCourseId: VersionCourseId, mark: Mark) => void;
 }) {
+  /* El excedente es una lectura del mismo reparto que ya hizo el motor: deja
+     ver qué optativa quedó fuera del cupo y por qué la barra no se mueve. */
+  const surplus = useMemo(
+    () =>
+      electiveSurplus({
+        courses: versionCourses,
+        requiredCredits: grouping.requiredCredits,
+        completed: new Set(trajectory.completedVersionCourseIds),
+        inProgress: new Set(trajectory.inProgressVersionCourseIds),
+      }),
+    [versionCourses, grouping.requiredCredits, trajectory],
+  );
+  const surplusCourses = useMemo(() => new Set(surplus.surplus), [surplus]);
+  const fullNote = electivesFullNote(surplus, courseReference);
+  const excess = surplusNote(surplus);
+
   return (
     <section data-grouping={grouping.id} className={styles.grouping} aria-labelledby={`grouping-${grouping.id}`}>
       <div className={styles.groupingHeading}>
@@ -283,6 +310,11 @@ function GroupingSection({
       <ProgressBar
         {...satisfiedProgressBarArguments(progress, progress.requiredCredits)}
       />
+      {excess || fullNote ? (
+        <p className={styles.groupingSurplus}>
+          {[excess, fullNote].filter(Boolean).join(" · ")}
+        </p>
+      ) : null}
       <div className={styles.courseGrid}>
         {versionCourses.map((versionCourse) => (
           <CourseCard
@@ -290,6 +322,7 @@ function GroupingSection({
             versionCourse={versionCourse}
             state={states.get(versionCourse.id) ?? "BLOCKED"}
             trajectory={trajectory}
+            surplus={surplusCourses.has(versionCourse.id)}
             onMark={(mark) => onMark(versionCourse.id, mark)}
           />
         ))}
