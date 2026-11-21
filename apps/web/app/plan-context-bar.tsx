@@ -1,11 +1,10 @@
 "use client";
 
-import { calculateSatisfiedPlanProgress } from "@sidera/curriculum-engine";
+import { planProgressWithFreeChoice } from "../lib/plan-progress";
 import { ProgramSelector } from "../lib/program-selector";
 import { useMemo } from "react";
 import {
   progressBarPresentation,
-  satisfiedProgressBarArguments,
 } from "../lib/curriculum-data";
 import { useTrajectory } from "../lib/trajectory";
 import styles from "./plan-context-bar.module.css";
@@ -29,21 +28,20 @@ export function PlanContextBar() {
   /* Mismo cálculo y mismas dependencias que la Vista Plan: se rehace solo
      cuando cambia la trayectoria, no en cada render del shell. */
   const presentation = useMemo(() => {
-    const progress = calculateSatisfiedPlanProgress(
-      evaluationContext,
-      trajectory,
-      snapshot.planVersion.requiredCredits,
-    );
+    // La misma fuente que la Vista Plan, Libre Elección estimada incluida:
+    // calcularlo aparte era lo que hacía discrepar cabecera y página.
+    const plan = planProgressWithFreeChoice(evaluationContext, trajectory, snapshot);
+    const inProgressCredits = Math.max(plan.projectedSatisfiedCredits - plan.satisfiedCredits, 0);
     return {
-      ...progressBarPresentation(
-        satisfiedProgressBarArguments(progress, progress.requiredCredits),
-      ),
-      completedCredits: progress.satisfiedCredits,
-      requiredCredits: progress.requiredCredits,
-      inProgressCredits: Math.max(
-        progress.projectedSatisfiedCredits - progress.satisfiedCredits,
-        0,
-      ),
+      ...progressBarPresentation({
+        completedCredits: plan.satisfiedCredits,
+        requiredCredits: plan.requiredCredits,
+        completedRatio: plan.requiredCredits > 0 ? plan.satisfiedCredits / plan.requiredCredits : 0,
+        inProgressCredits,
+      }),
+      completedCredits: plan.satisfiedCredits,
+      requiredCredits: plan.requiredCredits,
+      inProgressCredits,
     };
   }, [trajectory, program, evaluationContext]);
 

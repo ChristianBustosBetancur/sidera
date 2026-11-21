@@ -3,17 +3,19 @@
 import type {
   Component,
   Grouping,
+  GroupingId,
   VersionCourse,
   VersionCourseId,
 } from "@sidera/curriculum-domain";
 import {
-  calculateSatisfiedPlanProgress,
+  calculateFreeChoiceProgress,
   type ComponentCreditProgress,
   deriveVersionCourseState,
   type DerivedCourseState,
   evaluateVersionCourseEligibility,
   type GroupingCreditProgress,
   type StudentTrajectory,
+  type SurplusContributor,
 } from "@sidera/curriculum-engine";
 import { programs, type AcademicProgramData } from "../lib/programs";
 import { useMemo, useState } from "react";
@@ -31,6 +33,7 @@ import { type Mark, useTrajectory } from "../lib/trajectory";
 import { requirementShortfall } from "../lib/sync-notice";
 import { isSimulatedProgram, marksAreAvailable } from "../lib/dual-roles";
 import { electiveSurplus, electivesFullNote, surplusNote } from "../lib/elective-surplus";
+import { planProgressWithFreeChoice } from "../lib/plan-progress";
 import styles from "./curriculum-view.module.css";
 import { useDisplayMode } from "../lib/display-mode";
 
@@ -403,23 +406,70 @@ function ComponentSection({
           ))}
         </>
       ) : (
-        <div className={styles.unavailableProgress}>
-          <div
-            className={styles.unavailableProgressTrack}
-            role="img"
-            aria-label="Progreso no disponible: sin materias modeladas en Sidera"
-          />
-          <span className={styles.unavailableProgressBadge}>
-            Aún no modelado en Sidera
-          </span>
-          <p className={styles.unavailableProgressExplanation}>
-            Sidera todavía no tiene materias modeladas para este componente, por lo que su
-            progreso no puede calcularse.
-          </p>
-        </div>
+        <FreeChoiceSection component={component} trajectory={trajectory} />
       )}
       </div>
     </section>
+  );
+}
+
+/* Libre Elección no tiene materias modeladas, pero sí recibe los créditos
+   optativos que otras agrupaciones no pueden reconocer. La barra muestra esa
+   estimación, no un reconocimiento confirmado por la Universidad: mientras no
+   se verifique la norma aplicable, el rótulo y la nota lo dicen. */
+function FreeChoiceSection({ component, trajectory }: { component: Component; trajectory: StudentTrajectory }) {
+  const { evaluationContext, records, program } = useTrajectory();
+  /* Acuerdo 155 de 2014: en Doble Titulación los créditos pendientes por
+     componente y agrupación del segundo programa los determina su comité
+     asesor. Esta estimación no los sustituye ni los anticipa. */
+  const simulated = isSimulatedProgram(records, program.id);
+  const freeChoice = useMemo(
+    () => calculateFreeChoiceProgress(evaluationContext, trajectory, component.requiredCredits),
+    [evaluationContext, trajectory, component.requiredCredits],
+  );
+  const groupingName = (id: GroupingId) => snapshot.groupings.find(grouping => grouping.id === id)?.name ?? "otra agrupación";
+
+  return (
+    <div className={styles.freeChoice}>
+      {/* La salvedad normativa completa vive en la documentación técnica; aquí
+          basta una etiqueta discreta para no repetir advertencias largas. */}
+      <p className={styles.freeChoiceBadgeRow}>
+        <span className={styles.estimatedBadge}>Estimado</span>
+      </p>
+      <ProgressBar
+        completedCredits={freeChoice.estimatedCredits}
+        requiredCredits={freeChoice.requiredCredits}
+        completedRatio={freeChoice.requiredCredits > 0 ? freeChoice.estimatedCredits / freeChoice.requiredCredits : 0}
+        inProgressCredits={freeChoice.projectedCredits - freeChoice.estimatedCredits}
+      />
+      <p className={styles.freeChoiceNote}>
+        Los créditos que exceden los requisitos de otras agrupaciones se contabilizan aquí de forma estimada.
+        {simulated ? " En un plan simulado, los créditos del segundo programa los determina su comité asesor." : ""}
+      </p>
+      {freeChoice.contributors.length > 0 ? (
+        <ul className={styles.freeChoiceBreakdown}>
+          {freeChoice.contributors.map((entry: SurplusContributor) => (
+            <li key={entry.versionCourseId}>
+              <strong>{courseReference(entry.versionCourseId)}</strong>
+              <span>
+                {entry.surplusCredits} de {entry.credits} créditos · {groupingName(entry.groupingId)} ·{" "}
+                {entry.mark === "COMPLETED" ? "excedente aprobado" : "proyección condicional, aún en curso"}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className={styles.unavailableProgressExplanation}>
+          Todavía no hay créditos optativos por encima del cupo de ninguna agrupación.
+        </p>
+      )}
+      {freeChoice.uncountedCredits > 0 ? (
+        <p className={styles.freeChoiceNote}>
+          Hay {freeChoice.uncountedCredits} créditos excedentes por encima de los {freeChoice.requiredCredits} que
+          exige el componente. No se pierden del expediente, pero ya no suman en esta barra.
+        </p>
+      ) : null}
+    </div>
   );
 }
 
@@ -427,20 +477,19 @@ function ProgramCurriculumView() {
   const { fullView, planScale } = useDisplayMode();
   const { trajectory, states, markCourse, evaluationContext } = useTrajectory();
 
-  const progress = useMemo(
-    () =>
-      calculateSatisfiedPlanProgress(
-        evaluationContext,
-        trajectory,
-        snapshot.planVersion.requiredCredits,
-      ),
+  /* El total del plan incluye la estimación de Libre Elección: los 140 y 146
+     créditos exigidos ya la contaban, y el excedente que la alimenta nunca
+     estuvo en `satisfiedCredits`, así que no se duplica ningún crédito. */
+  const plan = useMemo(
+    () => planProgressWithFreeChoice(evaluationContext, trajectory, snapshot),
     [trajectory, evaluationContext],
   );
+  const progress = plan.progress;
   const unmodeledNote = unmodeledComponentsNote(progress.components);
   const projection = planProgressProjection({
-    satisfiedCredits: progress.satisfiedCredits,
-    projectedSatisfiedCredits: progress.projectedSatisfiedCredits,
-    requiredCredits: progress.requiredCredits,
+    satisfiedCredits: plan.satisfiedCredits,
+    projectedSatisfiedCredits: plan.projectedSatisfiedCredits,
+    requiredCredits: plan.requiredCredits,
   });
   const counts = courseStateCounts(states);
 
@@ -461,7 +510,10 @@ function ProgramCurriculumView() {
         <section className={styles.progressCard} aria-labelledby="progress-title">
           <p id="progress-title">Progreso académico</p>
           <ProgressBar
-            {...satisfiedProgressBarArguments(progress, progress.requiredCredits)}
+            completedCredits={plan.satisfiedCredits}
+            requiredCredits={plan.requiredCredits}
+            completedRatio={plan.requiredCredits > 0 ? plan.satisfiedCredits / plan.requiredCredits : 0}
+            inProgressCredits={plan.projectedSatisfiedCredits - plan.satisfiedCredits}
             projection={projection}
             counts={counts}
           />

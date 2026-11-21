@@ -506,6 +506,67 @@
   font-size: 0.86rem;
 }
 
+/* Libre Elección: barra real, pero con el origen de cada crédito a la vista
+   y el aviso de que es una estimación, no un reconocimiento confirmado. */
+.freeChoice {
+  display: grid;
+  gap: 0.6rem;
+  margin-top: 0.8rem;
+}
+
+.freeChoiceNote {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.freeChoiceBadgeRow {
+  margin: 0;
+}
+
+/* Etiqueta discreta: basta para marcar la naturaleza del dato sin repetir la
+   salvedad normativa, que vive en la documentación técnica. */
+.estimatedBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.55rem;
+  color: var(--muted);
+  background: var(--brand-soft, #eef1ef);
+  border: 1px solid var(--line);
+  border-radius: 99rem;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.freeChoiceBreakdown {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.freeChoiceBreakdown li {
+  display: grid;
+  gap: 0.15rem;
+  padding-left: 0.7rem;
+  border-left: 0.18rem solid var(--line);
+}
+
+.freeChoiceBreakdown strong {
+  font-size: 0.9rem;
+  line-height: 1.25;
+}
+
+.freeChoiceBreakdown span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
 /* Nota bajo la barra de una agrupación: explica por qué no se mueve. */
 .groupingSurplus {
   margin: -0.5rem 0 0.85rem;
