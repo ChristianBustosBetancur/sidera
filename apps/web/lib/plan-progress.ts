@@ -1,4 +1,4 @@
-import { calculateFreeChoiceProgress, calculateSatisfiedPlanProgress, type CurriculumEvaluationContext, type StudentTrajectory } from "@sidera/curriculum-engine";
+import { calculateFreeChoiceProgress, calculateSatisfiedPlanProgress, type CurriculumEvaluationContext, type FreeChoiceEntry, type StudentTrajectory } from "@sidera/curriculum-engine";
 import type { AcademicProgramData } from "./programs";
 
 /** La instantánea curricular tal como la expone el registro de programas. */
@@ -25,9 +25,11 @@ export function planProgressWithFreeChoice(
   context: CurriculumEvaluationContext,
   trajectory: StudentTrajectory,
   snapshot: Snapshot,
+  /** Asignaturas que el estudiante declaró en Libre Elección para este plan. */
+  entries: readonly FreeChoiceEntry[] = [],
 ) {
   const progress = calculateSatisfiedPlanProgress(context, trajectory, snapshot.planVersion.requiredCredits);
-  const freeChoice = calculateFreeChoiceProgress(context, trajectory, freeChoiceRequiredCredits(snapshot));
+  const freeChoice = calculateFreeChoiceProgress(context, trajectory, freeChoiceRequiredCredits(snapshot), entries);
   const satisfiedCredits = progress.satisfiedCredits + freeChoice.estimatedCredits;
   return {
     progress,
