@@ -53,6 +53,7 @@ import styles from "./explorar-view.module.css";
 import { useDisplayMode } from "../lib/display-mode";
 import { CourseDetails, GraphViewport, useMobileGraph, type GraphCameraHandle } from "../lib/graph-viewport";
 import { initialMobileDetail, mobileDetailReducer } from "../lib/mobile-detail-state";
+import { ScrollToTop } from "../lib/scroll-to-top";
 
 /* Cuántas sugerencias se ofrecen bajo el buscador. Suficientes para elegir sin
    convertir el desplegable en una segunda lista del plan. */
@@ -1327,6 +1328,7 @@ export function ExplorerView() {
           ) : null}
         </div>
       )}
+      <ScrollToTop />
     </main>
   );
 }

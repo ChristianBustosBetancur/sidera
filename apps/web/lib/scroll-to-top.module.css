@@ -1,0 +1,23 @@
+.button {
+  position: fixed;
+  z-index: 18;
+  right: calc(1rem + env(safe-area-inset-right));
+  bottom: calc(2.75rem + env(safe-area-inset-bottom));
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid #a9c7dc;
+  border-radius: 50%;
+  background: #e6f2fc;
+  color: #244b69;
+  cursor: pointer;
+}
+
+.button[hidden] { display: none; }
+.button:focus-visible { outline: 3px solid #2266aa; outline-offset: 3px; }
+
+@media (min-width: 76.001rem) {
+  .button { display: none; }
+}
