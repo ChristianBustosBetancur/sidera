@@ -92,6 +92,19 @@ describe("pure multi-program coordination", () => {
     const preview = edit({ ...initial(), dual: true }, "a", shared, "COMPLETED");
     expect(preview.next.plans.b!.marks["b:shared"]).toBe("COMPLETED");
     expect(preview.reconciliations.find(result => result.programId === "b")!.result.warnings).toHaveLength(1);
+    // Un aviso no cambia ninguna otra asignatura: se informa, no se confirma.
+    expect(preview.requiresConfirmation).toBe(false);
+  });
+  it("reflects a shared mark without asking when nothing else is affected", () => {
+    // Con el prerrequisito de «b» ya aprobado, marcar la compartida como «En
+    // curso» no invalida nada en ninguno de los dos planes: se refleja y ya.
+    const records = edit({ ...initial(), dual: true }, "b", exclusive, "COMPLETED").next;
+    const preview = edit(records, "a", shared, "IN_PROGRESS");
+    expect(preview.next.plans.a!.marks["a:shared"]).toBe("IN_PROGRESS");
+    expect(preview.next.sharedFacts[shared]).toBe("IN_PROGRESS");
+    expect(preview.reconciliations.every(entry => entry.result.invalidations.length === 0)).toBe(true);
+    expect(preview.requiresConfirmation).toBe(false);
+    expect(preview.changes).toHaveLength(2);
   });
   it("previews cross-plan cascade effects and preserves completed marks", () => {
     let records = edit({ ...initial(), dual: true }, "a", shared, "COMPLETED").next;

@@ -7,6 +7,10 @@ export type AcademicRecords = {
   formatVersion: 2;
   activeProgram: string;
   dual: boolean;
+  /* Carrera real del estudiante. El resto de programas son simulaciones: su
+     plan no manda sobre una matrícula que existe de verdad en el de origen.
+     Solo afecta a rótulos y a dónde se reportan los avisos, nunca a créditos. */
+  originProgram?: string;
   plans: Record<string, ProgramRecord>;
   sharedFacts: Record<string, TrajectoryMark>;
 };
@@ -79,18 +83,37 @@ function write(preview: AcademicPreview, model: ProgramModel, courseId: CourseId
 function start(records: AcademicRecords): AcademicPreview {
   return { next: clone(records), conflicts: [], shared: [], reconciliations: [], changes: [], requiresConfirmation: false };
 }
+/* Un plan simulado no des-inscribe una matrícula real. Si la reconciliación de
+   un programa que no es el de origen quiere retirar de «En curso» un hecho
+   compartido, se conserva el estado y se reporta como aviso.
+
+   Filtrar después de reconciliar es equivalente a no haber retirado nunca esa
+   materia: `reconcileTrajectory` solo retira materias EN CURSO, y una materia
+   en curso no satisface requisitos de otras ni como tal ni como no marcada,
+   así que conservarla no cambia la elegibilidad de ninguna otra. */
+function preserved(preview: AcademicPreview, model: ProgramModel, invalidation: { versionCourseId: VersionCourseId }) {
+  if (preview.next.originProgram === undefined || model.id === preview.next.originProgram) return false;
+  const course = model.context.versionCourses.find(course => course.id === invalidation.versionCourseId);
+  return course !== undefined && preview.next.sharedFacts[course.courseId] !== undefined;
+}
 function reconcile(preview: AcademicPreview, models: readonly ProgramModel[]) {
   for (const model of models) {
     const record = programRecord(preview.next, model);
     const first = model.context.versionCourses[0];
     if (!first) continue;
     const result = reconcileTrajectory({ versionCourseId: first.id, mark: record.marks[first.id] ?? "UNMARKED" }, recordContext(record, model.context), recordTrajectory(record, model.context));
-    for (const invalidation of result.invalidations) record.marks[invalidation.versionCourseId] = "UNMARKED";
-    if (result.invalidations.length) {
+    const retired = result.invalidations.filter(invalidation => !preserved(preview, model, invalidation));
+    const kept = result.invalidations.filter(invalidation => preserved(preview, model, invalidation));
+    for (const invalidation of retired) record.marks[invalidation.versionCourseId] = "UNMARKED";
+    if (retired.length) {
       preview.next.plans[model.context.planVersionId] = record;
       preview.requiresConfirmation = true;
     }
-    preview.reconciliations.push({ programId: model.id, result });
+    preview.reconciliations.push({ programId: model.id, result: {
+      ...result,
+      invalidations: retired,
+      warnings: [...result.warnings, ...kept.map(invalidation => ({ versionCourseId: invalidation.versionCourseId, mark: "IN_PROGRESS" as const, blocking: invalidation.blocking }))],
+    } });
     // Invalidations are effects in this plan. Never overwrite sharedFacts here.
   }
 }
@@ -103,7 +126,11 @@ export function previewAcademicMark(records: AcademicRecords, models: readonly P
   if (!active.course && mark === "IN_PROGRESS") throw new Error("External prerequisite records completion only");
   const shared = records.dual && verifiedShared.includes(courseId);
   for (const target of targets.filter(target => shared || target.model.id === programId)) write(preview, target.model, courseId, mark);
-  if (shared) { preview.next.sharedFacts[courseId] = mark; preview.requiresConfirmation = true; }
+  // Reflejar el hecho compartido no es, por sí solo, motivo para confirmar:
+  // es lo que el estudiante pidió al vincular los planes. La confirmación la
+  // decide `reconcile`, que la exige cuando el cambio invalida otras
+  // asignaturas en alguno de los programas.
+  if (shared) preview.next.sharedFacts[courseId] = mark;
   reconcile(preview, models.filter(model => targets.some(target => target.model.id === model.id && (shared || model.id === programId))));
   return preview;
 }
