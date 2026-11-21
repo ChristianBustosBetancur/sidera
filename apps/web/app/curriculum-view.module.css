@@ -1,4 +1,9 @@
 .page {
+  /* Fondo de la tarjeta de progreso. Vive aquí (y no en `.progressCard`) para
+     que el marcador de proyección pueda recortarse con el mismo color sin
+     duplicar el valor por programa. */
+  --progress-card-bg: #f8fbf9;
+
   width: min(100% - 2rem, 86rem);
   margin: 0 auto;
   padding: 2rem 0 5rem;
@@ -42,7 +47,7 @@
   gap: 0.6rem;
   padding: 1.2rem;
   color: var(--ink);
-  background: #f8fbf9;
+  background: var(--progress-card-bg, #f8fbf9);
   border-radius: 0.8rem;
 }
 
@@ -104,7 +109,7 @@
   width: 0.42rem;
   height: 100%;
   background: #263029;
-  border: 1px solid #f8fbf9;
+  border: 1px solid var(--progress-card-bg, #f8fbf9);
   clip-path: polygon(50% 0, 100% 42%, 72% 100%, 28% 100%, 0 42%);
   transform: translateX(-50%);
   pointer-events: none;
@@ -129,6 +134,10 @@
   position: relative;
   flex: none;
   overflow: hidden;
+
+  /* Respaldo sólido: si el degradado no puede resolverse, el segmento sigue
+     teniendo relleno en lugar de quedar invisible. */
+  background-color: var(--progress-start);
   background-image: linear-gradient(
     110deg,
     var(--progress-start),
@@ -684,19 +693,26 @@
 
 }
 
+/* Matemáticas reutiliza íntegramente la estructura de barras de Computación:
+   altura, radio, espaciado, proporciones y animaciones vienen de las reglas
+   base de arriba. Aquí solo se configura el color: la paleta Vino Editorial
+   del programa y el color propio de cada componente/agrupación. */
+.page[data-program="mathematics"] { --progress-card-bg: #F8F7F5; }
 .page[data-program="mathematics"] .planName { color: #eee5e8; }
-.page[data-program="mathematics"] .progressCard { background: #F8F7F5; }
 .page[data-program="mathematics"] .progressTrack {
-  --progress-start: var(--progress-color, var(--brand));
-  --progress-highlight: var(--progress-color, var(--program-secondary));
-  --progress-end: var(--progress-color, var(--brand));
-  --progress-glow: transparent;
+  /* Un único color base por componente/agrupación; de él se derivan el brillo
+     y el cierre del degradado para que `progressEnergyFlow` siga siendo
+     perceptible sin inventar una animación distinta a la de Computación. */
+  --progress-base: var(--progress-color, var(--brand));
+  --progress-start: var(--progress-base);
+  --progress-highlight: color-mix(in srgb, var(--progress-base) 62%, #ffffff);
+  --progress-end: color-mix(in srgb, var(--progress-base) 86%, #000000);
+  --progress-glow: color-mix(in srgb, var(--progress-base) 42%, transparent);
+
   background: #EAE8E5;
 }
 .component[data-component^="unal-mathematics-"] { --progress-color: var(--component-color); }
 .grouping[data-grouping^="unal-mathematics-"] { --progress-color: var(--group-color); }
-.component[data-component^="unal-mathematics-"] > div > .progressBar .progressTrack { height: .85rem; }
-.grouping[data-grouping^="unal-mathematics-"] .progressTrack { height: .5rem; }
 .component[data-component^="unal-mathematics-"] .componentHeading { border-color: var(--component-color); }
 .grouping[data-grouping^="unal-mathematics-"] > .groupingHeading { border-inline-start: .25rem solid var(--group-color); padding-inline-start: .6rem; }
 .courseCard[data-grouping^="unal-mathematics-"] { border-top: 4px solid var(--group-color); }
