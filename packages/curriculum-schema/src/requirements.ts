@@ -5,9 +5,12 @@ import type {
 } from "@sidera/curriculum-domain";
 import {
   componentIdSchema,
+  courseIdSchema,
   groupingIdSchema,
   versionCourseIdSchema,
 } from "./identifiers.js";
+
+export const externalCourseCompletedRequirementSchema = z.strictObject({ type: z.literal("EXTERNAL_COURSE_COMPLETED"), courseId: courseIdSchema });
 
 const positiveIntegerSchema = z.number().int().positive();
 
@@ -46,6 +49,7 @@ export const minimumGroupingCoursesRequirementSchema = z.strictObject({
 
 export const requirementLeafSchema: z.ZodType<RequirementLeaf> =
   z.discriminatedUnion("type", [
+    externalCourseCompletedRequirementSchema,
     courseCompletedRequirementSchema,
     courseCompletedOrConcurrentRequirementSchema,
     minimumTotalCreditsRequirementSchema,
@@ -57,6 +61,7 @@ export const requirementLeafSchema: z.ZodType<RequirementLeaf> =
 export const requirementExpressionSchema: z.ZodType<RequirementExpression> = z.lazy(
   () =>
     z.discriminatedUnion("type", [
+      externalCourseCompletedRequirementSchema,
       courseCompletedRequirementSchema,
       courseCompletedOrConcurrentRequirementSchema,
       minimumTotalCreditsRequirementSchema,

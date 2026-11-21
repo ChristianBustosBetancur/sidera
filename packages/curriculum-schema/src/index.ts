@@ -18,6 +18,7 @@ export {
   type UniversitySchemaOutput,
   type VersionCourseSchemaOutput,
 } from "./entities.js";
+export { sourceCourseSchema } from "./source-course.js";
 export {
   academicProgramIdSchema,
   componentIdSchema,
@@ -29,6 +30,7 @@ export {
   versionCourseIdSchema,
 } from "./identifiers.js";
 export {
+  externalCourseCompletedRequirementSchema,
   courseCompletedOrConcurrentRequirementSchema,
   courseCompletedRequirementSchema,
   minimumComponentCreditsRequirementSchema,
@@ -40,3 +42,4 @@ export {
   type RequirementExpressionSchemaOutput,
   type RequirementLeafSchemaOutput,
 } from "./requirements.js";
+export { academicRecordsSchema } from "./academic-records.js";

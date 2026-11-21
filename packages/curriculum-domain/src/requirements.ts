@@ -1,4 +1,4 @@
-import type { ComponentId, GroupingId, VersionCourseId } from "./identifiers.js";
+import type { ComponentId, CourseId, GroupingId, VersionCourseId } from "./identifiers.js";
 
 export type CourseCompletedRequirement = {
   type: "COURSE_COMPLETED";
@@ -33,7 +33,10 @@ export type MinimumGroupingCoursesRequirement = {
   courseCount: number;
 };
 
+export type ExternalCourseCompletedRequirement = { type: "EXTERNAL_COURSE_COMPLETED"; courseId: CourseId };
+
 export type RequirementLeaf =
+  | ExternalCourseCompletedRequirement
   | CourseCompletedRequirement
   | CourseCompletedOrConcurrentRequirement
   | MinimumTotalCreditsRequirement
