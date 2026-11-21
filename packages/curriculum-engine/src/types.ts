@@ -188,13 +188,17 @@ export type TrajectoryInvalidation = {
   blocking: readonly RequirementEvaluationNode[];
 };
 
-/* Materia APROBADA que, con la foto actual de la trayectoria, ya no sería
-   elegible. NO se retira: la trayectoria no guarda orden temporal, así que no
-   se puede saber si el estudiante la cursó antes de perder ese requisito o si
-   simplemente está corrigiendo su historial. Se reporta para que decida. */
+/* Materia que, con la foto actual de la trayectoria, ya no sería elegible.
+   NO se retira: la trayectoria no guarda orden temporal, así que no se puede
+   saber si el estudiante la cursó antes de perder ese requisito o si
+   simplemente está corrigiendo su historial. Se reporta para que decida.
+
+   APROBADA es el caso original. EN CURSO aparece solo en un plan simulado de
+   Doble Titulación: allí la matrícula es real en el programa de origen y el
+   plan simulado no tiene autoridad para des-inscribirla. */
 export type TrajectoryWarning = {
   versionCourseId: VersionCourseId;
-  mark: "COMPLETED";
+  mark: "COMPLETED" | "IN_PROGRESS";
   blocking: readonly RequirementEvaluationNode[];
 };
 
