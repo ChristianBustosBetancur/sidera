@@ -13,7 +13,7 @@ const mark = (records: AcademicRecords, programId: string, academicCode: string,
     code(programs.find(entry => entry.id === programId)!, academicCode).courseId, state).next;
 const planOf = (records: AcademicRecords, program: typeof computing) => {
   const record = programRecord(records, programModels.find(entry => entry.id === program.id)!);
-  return planProgressWithFreeChoice(recordContext(record, program.evaluationContext), recordTrajectory(record, program.evaluationContext), program.snapshot);
+  return planProgressWithFreeChoice(recordContext(record, program.evaluationContext), recordTrajectory(record, program.evaluationContext), program.snapshot, record.freeChoice ?? []);
 };
 
 describe("Libre Elección sobre los catálogos reales", () => {

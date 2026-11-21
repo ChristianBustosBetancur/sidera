@@ -45,14 +45,33 @@ export type SurplusContributor = {
   surplusCredits: number;
 };
 
+/* Asignatura que el estudiante declara como Libre Elección porque no está en
+   el catálogo del plan. El identificador es propio y estable: el código
+   académico es opcional y puede cambiar o repetirse, así que no sirve de
+   identidad. `origin` deja sitio a que más adelante una asignatura llegue
+   elegida de un buscador sin rehacer el registro ni el cálculo. */
+export type FreeChoiceEntry = {
+  id: string;
+  name: string;
+  credits: number;
+  mark: "COMPLETED" | "IN_PROGRESS";
+  academicCode?: string;
+  origin: "manual";
+};
+
 export type FreeChoiceProgress = {
   requiredCredits: number;
-  /** Excedente aprobado reconocible en Libre Elección, topado al requisito. */
+  /** Aprobado reconocible en Libre Elección, topado al requisito. */
   estimatedCredits: number;
-  /** Lo anterior más el excedente en curso, topado al requisito. */
+  /** Lo anterior más lo que está en curso, topado al requisito. */
   projectedCredits: number;
-  /** Excedente que supera el cupo de Libre Elección y no se puede acreditar. */
+  /** Lo que supera el cupo de Libre Elección y no se puede acreditar. */
   uncountedCredits: number;
+  /** Desglose por fuente, antes de aplicar el tope del componente. */
+  surplusApproved: number;
+  surplusInProgress: number;
+  entriesApproved: number;
+  entriesInProgress: number;
   contributors: SurplusContributor[];
 };
 
@@ -102,25 +121,40 @@ export function groupingSurpluses(
   });
 }
 
+/* Libre Elección tiene dos fuentes que no se solapan: el excedente que otras
+   agrupaciones no pueden reconocer, y las asignaturas que el estudiante
+   declara porque no están en el catálogo del plan. Un registro manual no
+   pertenece a ninguna agrupación, así que nunca puede contarse también como
+   excedente: la suma de ambas fuentes no duplica ningún crédito. */
 export function calculateFreeChoiceProgress(
   context: CurriculumEvaluationContext,
   trajectory: StudentTrajectory,
   requiredCredits: number,
+  entries: readonly FreeChoiceEntry[] = [],
 ): FreeChoiceProgress {
   const surpluses = groupingSurpluses(context, trajectory);
-  const approved = surpluses.reduce((total, entry) => total + entry.approvedSurplus, 0);
-  const projectedRaw = approved + surpluses.reduce((total, entry) => total + entry.inProgressSurplus, 0);
+  const surplusApproved = surpluses.reduce((total, entry) => total + entry.approvedSurplus, 0);
+  const surplusInProgress = surpluses.reduce((total, entry) => total + entry.inProgressSurplus, 0);
+  const sum = (mark: FreeChoiceEntry["mark"]) => entries
+    .filter(entry => entry.mark === mark)
+    .reduce((total, entry) => total + entry.credits, 0);
+  const entriesApproved = sum("COMPLETED");
+  const entriesInProgress = sum("IN_PROGRESS");
+
+  const approved = surplusApproved + entriesApproved;
+  const projectedRaw = approved + surplusInProgress + entriesInProgress;
 
   // El cupo del componente no se puede superar en la barra de cumplimiento,
-  // pero el excedente restante tampoco se oculta: se informa aparte.
-  const estimatedCredits = Math.min(approved, requiredCredits);
-  const projectedCredits = Math.min(projectedRaw, requiredCredits);
-
+  // pero lo que sobra tampoco se oculta ni se borra: se informa aparte.
   return {
     requiredCredits,
-    estimatedCredits,
-    projectedCredits,
+    estimatedCredits: Math.min(approved, requiredCredits),
+    projectedCredits: Math.min(projectedRaw, requiredCredits),
     uncountedCredits: Math.max(projectedRaw - requiredCredits, 0),
+    surplusApproved,
+    surplusInProgress,
+    entriesApproved,
+    entriesInProgress,
     contributors: surpluses.flatMap(entry => entry.contributors),
   };
 }

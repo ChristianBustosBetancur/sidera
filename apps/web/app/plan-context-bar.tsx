@@ -22,7 +22,7 @@ import styles from "./plan-context-bar.module.css";
    diferencia entre ambos, de modo que lo IN_PROGRESS nunca infla el porcentaje
    principal: se comunica aparte. */
 export function PlanContextBar() {
-  const { trajectory, program, evaluationContext } = useTrajectory();
+  const { trajectory, program, evaluationContext, freeChoiceEntries } = useTrajectory();
   const snapshot = program.snapshot;
 
   /* Mismo cálculo y mismas dependencias que la Vista Plan: se rehace solo
@@ -30,7 +30,7 @@ export function PlanContextBar() {
   const presentation = useMemo(() => {
     // La misma fuente que la Vista Plan, Libre Elección estimada incluida:
     // calcularlo aparte era lo que hacía discrepar cabecera y página.
-    const plan = planProgressWithFreeChoice(evaluationContext, trajectory, snapshot);
+    const plan = planProgressWithFreeChoice(evaluationContext, trajectory, snapshot, freeChoiceEntries);
     const inProgressCredits = Math.max(plan.projectedSatisfiedCredits - plan.satisfiedCredits, 0);
     return {
       ...progressBarPresentation({
@@ -43,7 +43,7 @@ export function PlanContextBar() {
       requiredCredits: plan.requiredCredits,
       inProgressCredits,
     };
-  }, [trajectory, program, evaluationContext]);
+  }, [trajectory, program, evaluationContext, freeChoiceEntries]);
 
   return (
     <section className={styles.bar} aria-label="Contexto y progreso del plan" data-sticky-chrome>

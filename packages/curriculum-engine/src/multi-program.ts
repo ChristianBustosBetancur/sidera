@@ -1,8 +1,18 @@
 import type { CourseId, VersionCourseId } from "@sidera/curriculum-domain";
+import type { FreeChoiceEntry } from "./free-choice.js";
 import { reconcileTrajectory } from "./reconciliation.js";
 import type { CurriculumEvaluationContext, StudentTrajectory, TrajectoryMark, TrajectoryReconciliation } from "./types.js";
 
-export type ProgramRecord = { marks: Record<string, TrajectoryMark>; externalCompleted: Record<string, boolean> };
+/* Las asignaturas declaradas de Libre Elección viven dentro del registro del
+   plan, no fuera: pertenecen a un programa concreto y jamás se copian al otro,
+   ni siquiera con la Doble Titulación activa. La sincronización compartida
+   opera sobre `marks` y `sharedFacts`, de modo que `freeChoice` queda al
+   margen por construcción. */
+export type ProgramRecord = {
+  marks: Record<string, TrajectoryMark>;
+  externalCompleted: Record<string, boolean>;
+  freeChoice?: FreeChoiceEntry[];
+};
 export type AcademicRecords = {
   formatVersion: 2;
   activeProgram: string;
@@ -44,7 +54,14 @@ export function recordContext(record: ProgramRecord, context: CurriculumEvaluati
 }
 
 function clone(records: AcademicRecords): AcademicRecords {
-  return { ...records, sharedFacts: { ...records.sharedFacts }, plans: Object.fromEntries(Object.entries(records.plans).map(([id, record]) => [id, { marks: { ...record.marks }, externalCompleted: { ...record.externalCompleted } }])) };
+  // `freeChoice` se arrastra tal cual: ninguna previsualización de marcas lo
+  // toca, pero perderlo aquí borraría los registros del estudiante en cada
+  // cambio. Se copia la lista para que el preview siga sin mutar la entrada.
+  return { ...records, sharedFacts: { ...records.sharedFacts }, plans: Object.fromEntries(Object.entries(records.plans).map(([id, record]) => [id, {
+    marks: { ...record.marks },
+    externalCompleted: { ...record.externalCompleted },
+    ...(record.freeChoice ? { freeChoice: [...record.freeChoice] } : {}),
+  }])) };
 }
 function placements(models: readonly ProgramModel[], courseId: CourseId) {
   return models.flatMap(model => {

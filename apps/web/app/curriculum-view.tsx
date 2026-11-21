@@ -17,7 +17,8 @@ import {
   type StudentTrajectory,
 } from "@sidera/curriculum-engine";
 import { programs, type AcademicProgramData } from "../lib/programs";
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
+import { draftOf, emptyDraft, validateDraft, type FreeChoiceDraft } from "../lib/free-choice-entries";
 import {
   courseStateCounts,
   type CourseStateCounts,
@@ -401,14 +402,15 @@ function ComponentSection({
    estimación, no un reconocimiento confirmado por la Universidad: mientras no
    se verifique la norma aplicable, el rótulo y la nota lo dicen. */
 function FreeChoiceSection({ component, trajectory }: { component: Component; trajectory: StudentTrajectory }) {
-  const { evaluationContext, records, program } = useTrajectory();
+  const { evaluationContext, records, program, freeChoiceEntries } = useTrajectory();
   /* Acuerdo 155 de 2014: en Doble Titulación los créditos pendientes por
      componente y agrupación del segundo programa los determina su comité
      asesor. Esta estimación no los sustituye ni los anticipa. */
   const simulated = isSimulatedProgram(records, program.id);
+  // Las dos fuentes del componente: excedente automático y lo declarado.
   const freeChoice = useMemo(
-    () => calculateFreeChoiceProgress(evaluationContext, trajectory, component.requiredCredits),
-    [evaluationContext, trajectory, component.requiredCredits],
+    () => calculateFreeChoiceProgress(evaluationContext, trajectory, component.requiredCredits, freeChoiceEntries),
+    [evaluationContext, trajectory, component.requiredCredits, freeChoiceEntries],
   );
   const origins = useMemo(() => freeChoiceOrigins(evaluationContext, trajectory), [evaluationContext, trajectory]);
   const groupingName = (id: GroupingId) => snapshot.groupings.find(grouping => grouping.id === id)?.name ?? "otra agrupación";
@@ -447,26 +449,132 @@ function FreeChoiceSection({ component, trajectory }: { component: Component; tr
           Todavía no hay créditos optativos por encima del cupo de ninguna agrupación.
         </p>
       )}
+      <FreeChoiceEntries />
       {freeChoice.uncountedCredits > 0 ? (
         <p className={styles.freeChoiceNote}>
-          Hay {freeChoice.uncountedCredits} créditos excedentes por encima de los {freeChoice.requiredCredits} que
-          exige el componente. No se pierden del expediente, pero ya no suman en esta barra.
+          Hay {freeChoice.uncountedCredits} créditos por encima de los {freeChoice.requiredCredits} que exige el
+          componente. No se pierden del expediente, pero ya no suman en esta barra.
         </p>
       ) : null}
     </div>
   );
 }
 
+/* Asignaturas que el estudiante declara porque no están en el catálogo. Se
+   presentan con su propio lenguaje —«Añadida por ti»— para que nunca se
+   confundan con una materia oficial del plan. */
+function FreeChoiceEntries() {
+  const { freeChoiceEntries, saveFreeChoiceEntry, removeFreeChoiceEntry, program, ready } = useTrajectory();
+  const [editing, setEditing] = useState<string | "new" | null>(null);
+  const [draft, setDraft] = useState<FreeChoiceDraft>(emptyDraft);
+  const [errors, setErrors] = useState<Partial<Record<keyof FreeChoiceDraft, string>>>({});
+  const planCodes = useMemo(
+    () => new Set(program.snapshot.versionCourses.map((course) => course.academicCode)),
+    [program],
+  );
+  const formId = useId();
+
+  const open = (id: string | "new") => {
+    const entry = freeChoiceEntries.find((item) => item.id === id);
+    setDraft(entry ? draftOf(entry) : emptyDraft());
+    setErrors({});
+    setEditing(id);
+  };
+  const close = () => { setEditing(null); setErrors({}); };
+  const submit = () => {
+    const result = validateDraft(draft, {
+      id: editing === "new" ? undefined : editing ?? undefined,
+      entries: freeChoiceEntries,
+      planCodes,
+    });
+    if (!result.ok) { setErrors(result.errors); return; }
+    saveFreeChoiceEntry(result.entry);
+    close();
+  };
+  const field = (key: keyof FreeChoiceDraft, value: string) => {
+    setDraft((current) => ({ ...current, [key]: value }));
+    setErrors((current) => ({ ...current, [key]: undefined }));
+  };
+
+  return (
+    <section className={styles.manualEntries} aria-label="Asignaturas añadidas a Libre Elección">
+      {freeChoiceEntries.length > 0 ? (
+        <ul className={styles.manualList}>
+          {freeChoiceEntries.map((entry) => (
+            <li key={entry.id}>
+              <div className={styles.manualItem}>
+                <strong>{entry.name}</strong>
+                <span>
+                  {entry.academicCode ? `${entry.academicCode} · ` : ""}
+                  {entry.credits} {entry.credits === 1 ? "crédito" : "créditos"} ·{" "}
+                  {entry.mark === "COMPLETED" ? "Completada" : "En curso"} · Añadida por ti
+                </span>
+              </div>
+              <div className={styles.manualItemActions}>
+                <button type="button" onClick={() => open(entry.id)} disabled={!ready}>
+                  Editar<span className={styles.visuallyHidden}> {entry.name}</span>
+                </button>
+                <button type="button" onClick={() => removeFreeChoiceEntry(entry.id)} disabled={!ready}>
+                  Eliminar<span className={styles.visuallyHidden}> {entry.name}</span>
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      {editing === null ? (
+        <button type="button" className={styles.manualAdd} onClick={() => open("new")} disabled={!ready}>
+          Añadir asignatura
+        </button>
+      ) : (
+        <div className={styles.manualForm}>
+          <h4 id={`${formId}-title`}>{editing === "new" ? "Nueva asignatura" : "Editar asignatura"}</h4>
+          <label htmlFor={`${formId}-name`}>Nombre de la asignatura</label>
+          <input id={`${formId}-name`} value={draft.name} onChange={(event) => field("name", event.target.value)}
+            aria-invalid={errors.name ? true : undefined} aria-describedby={errors.name ? `${formId}-name-error` : undefined} />
+          {errors.name ? <p id={`${formId}-name-error`} className={styles.manualError}>{errors.name}</p> : null}
+
+          <label htmlFor={`${formId}-credits`}>Créditos</label>
+          <input id={`${formId}-credits`} inputMode="numeric" value={draft.credits}
+            onChange={(event) => field("credits", event.target.value)}
+            aria-invalid={errors.credits ? true : undefined} aria-describedby={errors.credits ? `${formId}-credits-error` : undefined} />
+          {errors.credits ? <p id={`${formId}-credits-error`} className={styles.manualError}>{errors.credits}</p> : null}
+
+          <label htmlFor={`${formId}-mark`}>Estado</label>
+          <select id={`${formId}-mark`} value={draft.mark}
+            onChange={(event) => field("mark", event.target.value as FreeChoiceDraft["mark"])}>
+            <option value="COMPLETED">Completada</option>
+            <option value="IN_PROGRESS">En curso</option>
+          </select>
+
+          <label htmlFor={`${formId}-code`}>Código académico <span>(opcional)</span></label>
+          <input id={`${formId}-code`} value={draft.academicCode} onChange={(event) => field("academicCode", event.target.value)}
+            aria-invalid={errors.academicCode ? true : undefined} aria-describedby={errors.academicCode ? `${formId}-code-error` : undefined} />
+          {errors.academicCode ? <p id={`${formId}-code-error`} className={styles.manualError}>{errors.academicCode}</p> : null}
+
+          <div className={styles.manualFormActions}>
+            <button type="button" onClick={close}>Cancelar</button>
+            <button type="button" className={styles.manualPrimary} onClick={submit}>
+              {editing === "new" ? "Añadir" : "Guardar"}
+            </button>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
 function ProgramCurriculumView() {
   const { fullView, planScale } = useDisplayMode();
-  const { trajectory, states, markCourse, evaluationContext } = useTrajectory();
+  const { trajectory, states, markCourse, evaluationContext, freeChoiceEntries } = useTrajectory();
 
   /* El total del plan incluye la estimación de Libre Elección: los 140 y 146
      créditos exigidos ya la contaban, y el excedente que la alimenta nunca
      estuvo en `satisfiedCredits`, así que no se duplica ningún crédito. */
   const plan = useMemo(
-    () => planProgressWithFreeChoice(evaluationContext, trajectory, snapshot),
-    [trajectory, evaluationContext],
+    () => planProgressWithFreeChoice(evaluationContext, trajectory, snapshot, freeChoiceEntries),
+    [trajectory, evaluationContext, freeChoiceEntries],
   );
   const progress = plan.progress;
   // Un solo reparto para todas las agrupaciones del plan, en lugar de que cada

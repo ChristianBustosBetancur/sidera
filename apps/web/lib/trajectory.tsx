@@ -1,7 +1,7 @@
 "use client";
 
 import type { CourseId, VersionCourseId } from "@sidera/curriculum-domain";
-import { deriveVersionCourseState, programRecord, recordTrajectory, recordContext, previewAcademicMark, previewDualActivation, deactivateDual, type AcademicRecords, type AcademicPreview, type SharedConflict, type CurriculumEvaluationContext, type DerivedCourseState, type StudentTrajectory, type TrajectoryReconciliation } from "@sidera/curriculum-engine";
+import { deriveVersionCourseState, programRecord, recordTrajectory, recordContext, previewAcademicMark, previewDualActivation, deactivateDual, type AcademicRecords, type AcademicPreview, type FreeChoiceEntry, type SharedConflict, type CurriculumEvaluationContext, type DerivedCourseState, type StudentTrajectory, type TrajectoryReconciliation } from "@sidera/curriculum-engine";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { programs, programModels, verifiedShared, type AcademicProgramData } from "./programs";
 import { emptyAcademicRecords, loadAcademicRecords, saveAcademicRecords } from "./academic-storage";
@@ -10,6 +10,7 @@ import { DualDeactivationDialog } from "./dual-deactivation-dialog";
 import { defaultSyncPreferences, loadSyncPreferences, saveSyncPreferences } from "./sync-preferences";
 import { requirementShortfall, syncNoticeText } from "./sync-notice";
 import { markSharedRepairDone, repairNoticeText, repairSharedFacts, sharedRepairDone } from "./shared-fact-repair";
+import { freeChoiceEntriesOf, withFreeChoiceEntry, withoutFreeChoiceEntry } from "./free-choice-entries";
 import noticeStyles from "./sync-notice.module.css";
 
 export type Mark = "UNMARKED" | "IN_PROGRESS" | "COMPLETED";
@@ -31,6 +32,10 @@ type TrajectoryContextValue = {
   skipSharedConfirmation: boolean;
   setSkipSharedConfirmation: (skip: boolean) => void;
   setOriginProgram: (id: string) => void;
+  /** Asignaturas declaradas de Libre Elección en el programa activo. */
+  freeChoiceEntries: readonly FreeChoiceEntry[];
+  saveFreeChoiceEntry: (entry: FreeChoiceEntry) => void;
+  removeFreeChoiceEntry: (id: string) => void;
   ready: boolean;
 };
 const TrajectoryContext = createContext<TrajectoryContextValue | undefined>(undefined);
@@ -178,6 +183,17 @@ export function TrajectoryProvider({ children }: { children: ReactNode }) {
   return <TrajectoryContext.Provider value={{ trajectory, states, evaluationContext, program, records, ready, markCourse, previewMarkCourse, toggleDual,
     skipSharedConfirmation: preferences.skipSharedConfirmation,
     setSkipSharedConfirmation: changePreferences,
+    /* Siempre sobre el plan activo: un registro manual pertenece al programa
+       en el que se creó y la Doble Titulación no lo copia ni lo sincroniza. */
+    freeChoiceEntries: freeChoiceEntriesOf(records, program.snapshot.planVersion.id),
+    saveFreeChoiceEntry: entry => {
+      if (!ready || pending) return;
+      setRecords(current => withFreeChoiceEntry(current, program.snapshot.planVersion.id, entry));
+    },
+    removeFreeChoiceEntry: id => {
+      if (!ready || pending) return;
+      setRecords(current => withoutFreeChoiceEntry(current, program.snapshot.planVersion.id, id));
+    },
     // Cambiar de carrera de origen no reescribe marcas: decide qué plan manda
     // en las reconciliaciones siguientes y dónde se rotula la simulación.
     setOriginProgram: id => { if (ready && !pending && records.dual && programs.some(entry => entry.id === id)) setRecords(current => ({ ...current, originProgram: id })); },
