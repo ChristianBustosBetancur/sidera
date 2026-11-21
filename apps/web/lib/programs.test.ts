@@ -92,6 +92,42 @@ describe("dual degree activation over the real catalogs", () => {
     for (const courseId of [first!, second!]) expect(resolved.next.sharedFacts[courseId]).toBe("COMPLETED");
   });
 
+  it("keeps a really enrolled shared course in the simulated plan and warns instead", () => {
+    // 3008082 cumple requisitos en Computación, pero en Matemáticas depende de
+    // 3010394. El plan simulado no puede des-inscribir una matrícula real.
+    const cryptography = programs[0]!.snapshot.versionCourses.find(course => course.academicCode === "3008082")!;
+    const inMathematics = programs[1]!.snapshot.versionCourses.find(course => course.courseId === cryptography.courseId)!;
+    // En Computación su único prerrequisito es 3006934, que no es compartido.
+    const prerequisite = programs[0]!.snapshot.versionCourses.find(entry => entry.academicCode === "3006934")!;
+    let records = mark(emptyAcademicRecords(), "computing", prerequisite.courseId, "COMPLETED");
+    records = mark(records, "computing", cryptography.courseId, "IN_PROGRESS");
+    expect(records.plans[programs[0]!.snapshot.planVersion.id]!.marks[cryptography.id]).toBe("IN_PROGRESS");
+    records = { ...records, originProgram: "computing" };
+
+    const preview = previewDualActivation(records, programModels, verifiedShared);
+    const mathematics = preview.reconciliations.find(entry => entry.programId === "mathematics")!.result;
+    expect(preview.next.plans[unalMathematics2020.planVersion.id]!.marks[inMathematics.id]).toBe("IN_PROGRESS");
+    expect(mathematics.invalidations.map(item => item.versionCourseId)).not.toContain(inMathematics.id);
+    expect(mathematics.warnings).toContainEqual(expect.objectContaining({ versionCourseId: inMathematics.id, mark: "IN_PROGRESS" }));
+    // La carrera de origen conserva su reconciliación habitual.
+    expect(preview.reconciliations.find(entry => entry.programId === "computing")!.result.invalidations).toEqual([]);
+  });
+
+  it("still retires a non-shared course inside its own plan", () => {
+    // La regla protege hechos compartidos, no desactiva la reconciliación: una
+    // asignatura propia del plan sigue retirándose si pierde sus requisitos.
+    const base = programs[0]!.snapshot.versionCourses.find(course => course.academicCode === "3010435")!;
+    const dependent = programs[0]!.snapshot.versionCourses.find(course =>
+      course.requirements?.type === "COURSE_COMPLETED" && course.requirements.versionCourseId === base.id)!;
+    expect(dependent).toBeDefined();
+    let records = mark(emptyAcademicRecords(), "computing", base.courseId, "COMPLETED");
+    records = mark(records, "computing", dependent.courseId, "IN_PROGRESS");
+    const preview = previewAcademicMark(records, programModels, verifiedShared, "computing", base.courseId, "UNMARKED");
+    expect(preview.reconciliations.find(entry => entry.programId === "computing")!.result.invalidations
+      .map(item => item.versionCourseId)).toContain(dependent.id);
+    expect(preview.requiresConfirmation).toBe(true);
+  });
+
   it("keeps both trajectories when the link is switched off", () => {
     const linked = previewDualActivation(mark(emptyAcademicRecords(), "computing", calculus, "COMPLETED"), programModels, verifiedShared).next;
     const unlinked = deactivateDual(linked);

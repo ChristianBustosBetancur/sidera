@@ -11,6 +11,7 @@ import {
   type ComponentCreditProgress,
   deriveVersionCourseState,
   type DerivedCourseState,
+  evaluateVersionCourseEligibility,
   type GroupingCreditProgress,
   type StudentTrajectory,
 } from "@sidera/curriculum-engine";
@@ -27,6 +28,8 @@ import {
   satisfiedProgressBarArguments,
 } from "../lib/curriculum-data";
 import { type Mark, useTrajectory } from "../lib/trajectory";
+import { requirementShortfall } from "../lib/sync-notice";
+import { isSimulatedProgram, marksAreAvailable } from "../lib/dual-roles";
 import styles from "./curriculum-view.module.css";
 import { useDisplayMode } from "../lib/display-mode";
 
@@ -137,7 +140,7 @@ function CourseCard({
   trajectory: StudentTrajectory;
   onMark: (mark: Mark) => void;
 }) {
-  const { evaluationContext } = useTrajectory();
+  const { evaluationContext, records, program } = useTrajectory();
   const course = coursesById.get(versionCourse.courseId);
   const requirementText = versionCourse.requirements
     ? requirementLines(versionCourse.requirements)
@@ -153,6 +156,23 @@ function CourseCard({
     derivedState.eligibility.requirementEvaluation
       ? blockingReasons(derivedState.eligibility.requirementEvaluation)
       : [];
+  /* En un plan simulado la matrícula es real en la carrera de origen: aquí no
+     se retira, se advierte. El aviso vive en la tarjeta para que se vea al
+     consultar la asignatura, no solo al momento de marcarla. */
+  const simulated = isSimulatedProgram(records, program.id);
+  const preservedEligibility =
+    simulated && currentMark !== "UNMARKED"
+      ? evaluateVersionCourseEligibility(versionCourse.id, evaluationContext, trajectory)
+      : undefined;
+  const preservedShortfall =
+    preservedEligibility && !preservedEligibility.satisfied &&
+    preservedEligibility.requirementEvaluation
+      ? requirementShortfall(blockingReasons(preservedEligibility.requirementEvaluation))
+      : undefined;
+  /* Un hecho compartido se decide en la carrera de origen, así que su tarjeta
+     nunca queda sin acciones: aunque este plan lo considere bloqueado, el
+     estudiante tiene que poder corregirlo desde cualquiera de los dos. */
+  const marksAvailable = marksAreAvailable(records, versionCourse.courseId, blocked);
 
   return (
     <article data-grouping={versionCourse.groupingId} className={`${styles.courseCard} ${styles[state.toLowerCase()]}`}>
@@ -181,6 +201,12 @@ function CourseCard({
       ) : (
         <p className={styles.noRequirements}>Sin prerrequisitos ni correquisitos.</p>
       )}
+
+      {preservedShortfall ? (
+        <p className={styles.simulatedWarning} role="note">
+          {preservedShortfall} · Se mantiene {currentMark === "IN_PROGRESS" ? "«En curso»" : "«Completada»"} porque {program.label} es un plan simulado.
+        </p>
+      ) : null}
 
       {blocked ? (
         <section className={styles.blockingReasons}>
@@ -214,7 +240,7 @@ function CourseCard({
           type="button"
           className={currentMark === "IN_PROGRESS" ? styles.selectedAction : undefined}
           aria-pressed={currentMark === "IN_PROGRESS"}
-          disabled={blocked}
+          disabled={!marksAvailable}
           onClick={() => onMark("IN_PROGRESS")}
         >
           En curso
@@ -223,7 +249,7 @@ function CourseCard({
           type="button"
           className={currentMark === "COMPLETED" ? styles.selectedAction : undefined}
           aria-pressed={currentMark === "COMPLETED"}
-          disabled={blocked}
+          disabled={!marksAvailable}
           onClick={() => onMark("COMPLETED")}
         >
           Completada

@@ -497,6 +497,19 @@
   font-size: 0.86rem;
 }
 
+/* Aviso de plan simulado: informa sin alarmar. No es un error del estudiante
+   ni un bloqueo, es una diferencia entre dos planes. */
+.simulatedWarning {
+  margin: 0 0 1rem;
+  padding: 0.5rem 0.65rem;
+  color: #5a4616;
+  background: #fdf6e3;
+  border-inline-start: 0.2rem solid #c2a14d;
+  border-radius: 0.35rem;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
 .blockingReasons {
   margin: 0 0 1rem;
   color: #3f4a43;
