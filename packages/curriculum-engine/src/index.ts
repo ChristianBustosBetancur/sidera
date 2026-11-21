@@ -39,4 +39,4 @@ export type {
   VersionCourseEligibilityEvaluation,
 } from "./types.js";
 export { programRecord, recordTrajectory, recordContext, previewAcademicMark, previewDualActivation, deactivateDual, type AcademicRecords, type AcademicPreview, type ProgramModel, type ProgramRecord, type SharedAdoption, type SharedConflict } from "./multi-program.js";
-export { calculateFreeChoiceProgress, groupingSurpluses, type FreeChoiceProgress, type GroupingSurplus, type SurplusContributor } from "./free-choice.js";
+export { calculateFreeChoiceProgress, groupingSurpluses, type FreeChoiceEntry, type FreeChoiceProgress, type GroupingSurplus, type SurplusContributor } from "./free-choice.js";
