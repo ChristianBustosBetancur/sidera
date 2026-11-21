@@ -576,20 +576,6 @@
   line-height: 1.35;
 }
 
-/* Insignia neutra: la asignatura está aprobada, solo que fuera del cupo. */
-.surplusBadge {
-  display: inline-flex;
-  align-items: center;
-  min-height: 1.8rem;
-  padding: 0.2rem 0.6rem;
-  color: #5a4616;
-  background: #fdf6e3;
-  border: 1px solid #e0cf9a;
-  border-radius: 99rem;
-  font-size: 0.72rem;
-  font-weight: 800;
-}
-
 /* Aviso de plan simulado: informa sin alarmar. No es un error del estudiante
    ni un bloqueo, es una diferencia entre dos planes. */
 .simulatedWarning {

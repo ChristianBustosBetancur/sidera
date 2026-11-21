@@ -15,7 +15,6 @@ import {
   evaluateVersionCourseEligibility,
   type GroupingCreditProgress,
   type StudentTrajectory,
-  type SurplusContributor,
 } from "@sidera/curriculum-engine";
 import { programs, type AcademicProgramData } from "../lib/programs";
 import { useMemo, useState } from "react";
@@ -32,7 +31,7 @@ import {
 import { type Mark, useTrajectory } from "../lib/trajectory";
 import { requirementShortfall } from "../lib/sync-notice";
 import { isSimulatedProgram, marksAreAvailable } from "../lib/dual-roles";
-import { electiveSurplus, electivesFullNote, surplusNote } from "../lib/elective-surplus";
+import { electivesFullNote, freeChoiceOrigins, groupingElectiveStates, originNote, surplusNote, type GroupingElectiveState } from "../lib/elective-surplus";
 import { planProgressWithFreeChoice } from "../lib/plan-progress";
 import styles from "./curriculum-view.module.css";
 import { useDisplayMode } from "../lib/display-mode";
@@ -135,14 +134,11 @@ function CourseCard({
   versionCourse,
   state,
   trajectory,
-  surplus,
   onMark,
 }: {
   versionCourse: VersionCourse;
   state: DerivedCourseState;
   trajectory: StudentTrajectory;
-  /** Optativa marcada que no cabe en el cupo de su agrupación. */
-  surplus: boolean;
   onMark: (mark: Mark) => void;
 }) {
   const { evaluationContext, records, program } = useTrajectory();
@@ -195,13 +191,6 @@ function CourseCard({
         <span className={styles.stateBadge} data-state={state}>
           {stateLabels[state]}
         </span>
-        {/* No cabe en el cupo optativo de su agrupación: sigue cursada y
-            aprobada, pero no suma en esta barra. */}
-        {surplus ? (
-          <span className={styles.surplusBadge} title="No cabe en el cupo de optativas de esta agrupación, así que no suma en su barra.">
-            Excedente
-          </span>
-        ) : null}
       </div>
 
       {requirementText.length > 0 ? (
@@ -277,6 +266,7 @@ function GroupingSection({
   states,
   trajectory,
   progress,
+  surplus,
   onMark,
 }: {
   grouping: Grouping;
@@ -284,23 +274,14 @@ function GroupingSection({
   states: ReadonlyMap<VersionCourseId, DerivedCourseState>;
   trajectory: StudentTrajectory;
   progress: GroupingCreditProgress;
+  surplus: GroupingElectiveState | undefined;
   onMark: (versionCourseId: VersionCourseId, mark: Mark) => void;
 }) {
-  /* El excedente es una lectura del mismo reparto que ya hizo el motor: deja
-     ver qué optativa quedó fuera del cupo y por qué la barra no se mueve. */
-  const surplus = useMemo(
-    () =>
-      electiveSurplus({
-        courses: versionCourses,
-        requiredCredits: grouping.requiredCredits,
-        completed: new Set(trajectory.completedVersionCourseIds),
-        inProgress: new Set(trajectory.inProgressVersionCourseIds),
-      }),
-    [versionCourses, grouping.requiredCredits, trajectory],
-  );
-  const surplusCourses = useMemo(() => new Set(surplus.surplus), [surplus]);
-  const fullNote = electivesFullNote(surplus, courseReference);
-  const excess = surplusNote(surplus);
+  /* El excedente se cuenta en créditos y no señala ninguna asignatura: con dos
+     optativas aprobadas compitiendo por un cupo, cuál «sobra» dependería del
+     orden interno del motor, que no es una afirmación académica. */
+  const fullNote = surplus ? electivesFullNote(surplus, courseReference) : undefined;
+  const excess = surplus ? surplusNote(surplus) : undefined;
 
   return (
     <section data-grouping={grouping.id} className={styles.grouping} aria-labelledby={`grouping-${grouping.id}`}>
@@ -323,7 +304,6 @@ function GroupingSection({
             versionCourse={versionCourse}
             state={states.get(versionCourse.id) ?? "BLOCKED"}
             trajectory={trajectory}
-            surplus={surplusCourses.has(versionCourse.id)}
             onMark={(mark) => onMark(versionCourse.id, mark)}
           />
         ))}
@@ -337,12 +317,14 @@ function ComponentSection({
   states,
   trajectory,
   progress,
+  electiveStates,
   onMark,
 }: {
   component: Component;
   states: ReadonlyMap<VersionCourseId, DerivedCourseState>;
   trajectory: StudentTrajectory;
   progress: ComponentCreditProgress;
+  electiveStates: ReadonlyMap<GroupingId, GroupingElectiveState>;
   onMark: (versionCourseId: VersionCourseId, mark: Mark) => void;
 }) {
   const componentGroupings = groupingsByComponentId.get(component.id) ?? [];
@@ -401,6 +383,7 @@ function ComponentSection({
                 (groupingProgress) =>
                   groupingProgress.groupingId === grouping.id,
               )!}
+              surplus={electiveStates.get(grouping.id)}
               onMark={onMark}
             />
           ))}
@@ -427,6 +410,7 @@ function FreeChoiceSection({ component, trajectory }: { component: Component; tr
     () => calculateFreeChoiceProgress(evaluationContext, trajectory, component.requiredCredits),
     [evaluationContext, trajectory, component.requiredCredits],
   );
+  const origins = useMemo(() => freeChoiceOrigins(evaluationContext, trajectory), [evaluationContext, trajectory]);
   const groupingName = (id: GroupingId) => snapshot.groupings.find(grouping => grouping.id === id)?.name ?? "otra agrupación";
 
   return (
@@ -446,15 +430,15 @@ function FreeChoiceSection({ component, trajectory }: { component: Component; tr
         Los créditos que exceden los requisitos de otras agrupaciones se contabilizan aquí de forma estimada.
         {simulated ? " En un plan simulado, los créditos del segundo programa los determina su comité asesor." : ""}
       </p>
-      {freeChoice.contributors.length > 0 ? (
+      {origins.length > 0 ? (
+        /* Se nombra la agrupación de origen y cuántas optativas hay detrás,
+           nunca una asignatura concreta: con el cupo disputado, señalar a una
+           sería una afirmación que no podemos sostener. */
         <ul className={styles.freeChoiceBreakdown}>
-          {freeChoice.contributors.map((entry: SurplusContributor) => (
-            <li key={entry.versionCourseId}>
-              <strong>{courseReference(entry.versionCourseId)}</strong>
-              <span>
-                {entry.surplusCredits} de {entry.credits} créditos · {groupingName(entry.groupingId)} ·{" "}
-                {entry.mark === "COMPLETED" ? "excedente aprobado" : "proyección condicional, aún en curso"}
-              </span>
+          {origins.map((origin) => (
+            <li key={origin.groupingId}>
+              <strong>{groupingName(origin.groupingId)}</strong>
+              <span>{originNote(origin)}</span>
             </li>
           ))}
         </ul>
@@ -485,6 +469,12 @@ function ProgramCurriculumView() {
     [trajectory, evaluationContext],
   );
   const progress = plan.progress;
+  // Un solo reparto para todas las agrupaciones del plan, en lugar de que cada
+  // sección lo recalcule por su cuenta.
+  const electiveStates = useMemo(
+    () => groupingElectiveStates(evaluationContext, trajectory),
+    [evaluationContext, trajectory],
+  );
   const unmodeledNote = unmodeledComponentsNote(progress.components);
   const projection = planProgressProjection({
     satisfiedCredits: plan.satisfiedCredits,
@@ -551,6 +541,7 @@ function ProgramCurriculumView() {
               (componentProgress) =>
                 componentProgress.componentId === component.id,
             )!}
+            electiveStates={electiveStates}
             onMark={markCourse}
           />
         ))}
