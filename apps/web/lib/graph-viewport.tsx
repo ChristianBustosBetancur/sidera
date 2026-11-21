@@ -133,7 +133,9 @@ export function GraphViewport({ mobile, fullView, frame, cameraRef, regionRef, c
           event.preventDefault(); if (event.key === "0" || event.key === "Home") reset(); else zoom(event.key === "-" ? 1 / 1.3 : 1.3);
         }
       }}>
-      <div ref={worldRef} className={styles.world} style={{ transform: `translate(${cameraValue.current.x}px, ${cameraValue.current.y}px) scale(${cameraValue.current.scale})` }}>{children}</div>
+      {/* Map panning benefits from a prepared compositing layer at high zoom.
+          Keep the hint on its mobile world only, never the shell or details. */}
+      <div ref={worldRef} className={styles.world} style={{ willChange: directCamera ? "transform" : undefined, transform: `translate(${cameraValue.current.x}px, ${cameraValue.current.y}px) scale(${cameraValue.current.scale})` }}>{children}</div>
     </section>
   </div>;
 }
