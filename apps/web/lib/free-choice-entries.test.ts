@@ -181,6 +181,70 @@ describe("integración con el cálculo de créditos", () => {
   });
 });
 
+/* La cabecera y la barra de Libre Elección salieron una vez descoordinadas
+   porque la barra de contexto llamaba al cálculo central sin los registros.
+   Estas pruebas fijan que el total del plan los incluya siempre. */
+describe("coherencia del progreso general", () => {
+  const marcado = () => {
+    let records = emptyAcademicRecords();
+    for (const code of ["1000004-M", "3010334"]) {
+      records = previewAcademicMark(records, programModels, verifiedShared, "computing",
+        computing.snapshot.versionCourses.find(course => course.academicCode === code)!.courseId, "COMPLETED").next;
+    }
+    return records;
+  };
+
+  it("una asignatura Completada suma al total aprobado del plan", () => {
+    const base = planOf(marcado(), computing);
+    expect(base.satisfiedCredits).toBe(8);
+    const conRegistro = planOf(withFreeChoiceEntry(marcado(), csPlan, entry({ credits: 4 })), computing);
+    expect(conRegistro.satisfiedCredits).toBe(12);
+    expect(conRegistro.requiredCredits).toBe(146);
+    // Y no se cuela en el progreso de las agrupaciones.
+    expect(conRegistro.progress.satisfiedCredits).toBe(base.progress.satisfiedCredits);
+  });
+
+  it("una asignatura En curso suma a la proyección, no a lo aprobado", () => {
+    const records = withFreeChoiceEntry(marcado(), csPlan, entry({ credits: 4, mark: "IN_PROGRESS" }));
+    const plan = planOf(records, computing);
+    expect(plan.satisfiedCredits).toBe(8);
+    expect(plan.projectedSatisfiedCredits - plan.satisfiedCredits).toBe(4);
+  });
+
+  it("editar el estado mueve los créditos entre aprobado y proyección", () => {
+    const enCurso = withFreeChoiceEntry(marcado(), csPlan, entry({ credits: 4, mark: "IN_PROGRESS" }));
+    const completada = withFreeChoiceEntry(enCurso, csPlan, entry({ credits: 4, mark: "COMPLETED" }));
+    expect(planOf(enCurso, computing).satisfiedCredits).toBe(8);
+    expect(planOf(completada, computing).satisfiedCredits).toBe(12);
+    expect(planOf(completada, computing).projectedSatisfiedCredits).toBe(12);
+  });
+
+  it("editar los créditos se refleja en el total, y eliminar lo devuelve", () => {
+    const tres = withFreeChoiceEntry(marcado(), csPlan, entry({ credits: 3 }));
+    const seis = withFreeChoiceEntry(tres, csPlan, entry({ credits: 6 }));
+    expect(planOf(tres, computing).satisfiedCredits).toBe(11);
+    expect(planOf(seis, computing).satisfiedCredits).toBe(14);
+    expect(planOf(withoutFreeChoiceEntry(seis, csPlan, "le-1"), computing).satisfiedCredits).toBe(8);
+  });
+
+  it("el total del plan es siempre agrupaciones más Libre Elección", () => {
+    let records = withFreeChoiceEntry(marcado(), csPlan, entry({ credits: 4 }));
+    records = withFreeChoiceEntry(records, csPlan, entry({ id: "le-2", name: "Coro", credits: 3, mark: "IN_PROGRESS" }));
+    const plan = planOf(records, computing);
+    expect(plan.satisfiedCredits).toBe(plan.progress.satisfiedCredits + plan.freeChoice.estimatedCredits);
+    expect(plan.projectedSatisfiedCredits).toBe(plan.progress.projectedSatisfiedCredits + plan.freeChoice.projectedCredits);
+    expect(plan.satisfiedCredits).toBeLessThanOrEqual(plan.requiredCredits);
+  });
+
+  it("cada programa suma solo sus propios registros, también con Doble Titulación", () => {
+    let records = withFreeChoiceEntry(marcado(), csPlan, entry({ credits: 4 }));
+    records = withFreeChoiceEntry(records, mathPlan, entry({ id: "le-m", name: "Seminario", credits: 2 }));
+    const vinculado = previewDualActivation({ ...records, originProgram: "computing" }, programModels, verifiedShared).next;
+    expect(planOf(vinculado, computing).freeChoice.entriesApproved).toBe(4);
+    expect(planOf(vinculado, mathematics).freeChoice.entriesApproved).toBe(2);
+  });
+});
+
 describe("persistencia", () => {
   it("sobrevive al guardado y la recarga, junto a las marcas previas", () => {
     let records = previewAcademicMark(emptyAcademicRecords(), programModels, verifiedShared, "computing",

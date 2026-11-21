@@ -25,8 +25,11 @@ export function planProgressWithFreeChoice(
   context: CurriculumEvaluationContext,
   trajectory: StudentTrajectory,
   snapshot: Snapshot,
-  /** Asignaturas que el estudiante declaró en Libre Elección para este plan. */
-  entries: readonly FreeChoiceEntry[] = [],
+  /* Asignaturas declaradas en Libre Elección para este plan. Es obligatorio a
+     propósito: cuando tenía valor por defecto, una vista que lo olvidaba
+     seguía compilando y mostraba cifras distintas a las del resto. Pasar una
+     lista vacía es una decisión explícita, no un descuido. */
+  entries: readonly FreeChoiceEntry[],
 ) {
   const progress = calculateSatisfiedPlanProgress(context, trajectory, snapshot.planVersion.requiredCredits);
   const freeChoice = calculateFreeChoiceProgress(context, trajectory, freeChoiceRequiredCredits(snapshot), entries);
