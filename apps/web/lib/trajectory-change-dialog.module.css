@@ -162,8 +162,12 @@
 }
 
 .confirm:hover {
-  background: #12402f;
+  filter: brightness(.85);
 }
+
+.confirm:disabled { opacity: .5; cursor: not-allowed; }
+.conflict { display: grid; gap: .3rem; margin-block: .75rem; }
+.conflict select { min-height: 2.75rem; width: 100%; font: inherit; }
 
 @media (max-width: 42rem) {
   .dialog {

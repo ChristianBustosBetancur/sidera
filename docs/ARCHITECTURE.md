@@ -60,6 +60,32 @@ El diálogo de confirmación lo renderiza el propio proveedor, no cada vista. La
 
 ## Principios de separación
 
+### Programas y seguimiento conjunto
+
+El registro de programas del cliente adapta snapshots al mismo contexto, índices
+y funciones de presentación. Las tres vistas se crean una vez por catálogo a
+partir de una única implementación; el grafo y sus layouts se precalculan, sin
+intervenir en pan o zoom. El orden de agrupaciones es configuración visual del
+programa y no determina niveles topológicos.
+
+La persistencia local de formato 2 separa marcas por versión de plan, programa
+activo y hechos compartidos. La primera carga importa las marcas válidas del
+formato 1 de Computación sin modificar su clave. Un formato 2 desconocido o
+dañado no se sobrescribe; la UI informa que la sesión no puede persistirse.
+
+`multi-program.ts`, en el engine, coordina previsualizaciones puras entre planes
+e invoca la reconciliación existente para cada uno. Las marcas explícitas «Sin
+marcar» se distinguen de la ausencia de registro. Activar Doble Titulación y
+editar una identidad compartida requieren confirmar la instantánea mostrada;
+los conflictos deben resolverse antes. Las invalidaciones locales no escriben
+sobre los hechos compartidos ni retiran aprobadas. Desactivar solo separa el
+seguimiento futuro y conserva las últimas trayectorias reflejadas.
+
+Un requisito `EXTERNAL_COURSE_COMPLETED` identifica un curso institucional por
+`CourseId`, declarado en el contexto externo y registrado como aprobado por el
+estudiante. No incorpora un `VersionCourse` ni créditos en el plan que lo exige.
+Las referencias externas desconocidas siguen generando diagnósticos.
+
 - Los datos curriculares nunca se escriben directamente dentro de componentes visuales.
 - La lógica curricular (prerrequisitos, desbloqueos, progreso) es independiente de React, Next.js y de la interfaz, y se ejecuta localmente en el dispositivo.
 - El 3D es completamente opcional y se carga solo como mejora progresiva; nunca es una dependencia del flujo funcional.

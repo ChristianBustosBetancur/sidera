@@ -1,6 +1,7 @@
 import type {
   Component,
   ComponentId,
+  CourseId,
   Grouping,
   GroupingId,
   RequirementExpression,
@@ -76,8 +77,8 @@ export function createEvaluationIndexes(
 }
 
 function unresolvedReference(
-  referenceType: "VERSION_COURSE" | "COMPONENT" | "GROUPING",
-  referenceId: VersionCourseId | ComponentId | GroupingId,
+  referenceType: "VERSION_COURSE" | "COMPONENT" | "GROUPING" | "COURSE",
+  referenceId: VersionCourseId | ComponentId | GroupingId | CourseId,
 ): EvaluationDiagnostic {
   return {
     code: "UNRESOLVED_REFERENCE",
@@ -303,6 +304,10 @@ function evaluateNode(
   environment: EvaluationEnvironment,
 ): RequirementEvaluationNode {
   switch (expression.type) {
+    case "EXTERNAL_COURSE_COMPLETED": {
+      const known = environment.context.externalCourses?.some(course => course.id === expression.courseId) ?? false;
+      return { type: expression.type, courseId: expression.courseId, satisfied: known && (environment.context.completedExternalCourseIds?.includes(expression.courseId) ?? false), diagnostics: known ? [] : [unresolvedReference("COURSE", expression.courseId)] };
+    }
     case "COURSE_COMPLETED":
     case "COURSE_COMPLETED_OR_CONCURRENT":
       return evaluateCourseRequirement(expression, environment);

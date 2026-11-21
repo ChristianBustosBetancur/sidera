@@ -45,3 +45,26 @@ summary:focus-visible {
   outline: 3px solid #2266aa;
   outline-offset: 2px;
 }
+
+/* Program identity is separate from academic-state colors. */
+[data-program="mathematics"] {
+  --brand: #6B3044;
+  --brand-soft: #EAE8E5;
+  --paper: #F8F7F5;
+  --surface: #fff;
+  --line: #EAE8E5;
+  --program-secondary: #955B70;
+  --program-detail: #D7C5C9;
+  background: var(--paper);
+}
+[data-grouping="unal-mathematics-2020-mathematics"] { --group-color: #285C63; }
+[data-grouping="unal-mathematics-2020-algebra"] { --group-color: #66508D; }
+[data-grouping="unal-mathematics-2020-analysis"] { --group-color: #376B9D; }
+[data-grouping="unal-mathematics-2020-applied"] { --group-color: #317F79; }
+[data-grouping="unal-mathematics-2020-physics"] { --group-color: #95741C; }
+[data-grouping="unal-mathematics-2020-geometry"] { --group-color: #197B89; }
+[data-grouping="unal-mathematics-2020-electives"] { --group-color: #B9572E; }
+[data-grouping="unal-mathematics-2020-degree"] { --group-color: #4C5158; }
+[data-component="unal-mathematics-2020-foundation"] { --component-color: #52647A; }
+[data-component="unal-mathematics-2020-disciplinary"] { --component-color: #68634A; }
+[data-component="unal-mathematics-2020-free-choice"] { --component-color: #66656B; }

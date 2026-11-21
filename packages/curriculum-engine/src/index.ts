@@ -38,3 +38,4 @@ export type {
   UnresolvedReferenceDiagnostic,
   VersionCourseEligibilityEvaluation,
 } from "./types.js";
+export { programRecord, recordTrajectory, recordContext, previewAcademicMark, previewDualActivation, deactivateDual, type AcademicRecords, type AcademicPreview, type ProgramModel, type ProgramRecord, type SharedConflict } from "./multi-program.js";

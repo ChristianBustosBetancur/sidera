@@ -43,6 +43,7 @@ function requirementEdges(
       return requirement.children.flatMap((child) =>
         requirementEdges(targetId, child),
       );
+    case "EXTERNAL_COURSE_COMPLETED":
     case "MIN_TOTAL_CREDITS":
     case "MIN_COMPONENT_CREDITS":
     case "MIN_GROUPING_CREDITS":

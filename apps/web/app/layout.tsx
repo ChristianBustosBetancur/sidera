@@ -8,7 +8,7 @@ import styles from "./layout.module.css";
 
 export const metadata: Metadata = {
   title: "Plan curricular | Sidera",
-  description: "Plan oficial de Ciencias de la Computación, Acuerdo 0018 de 2024",
+  description: "Explora los planes de Ciencias de la Computación y Matemáticas de la Universidad Nacional de Colombia, sede Medellín",
 };
 
 export const viewport: Viewport = {

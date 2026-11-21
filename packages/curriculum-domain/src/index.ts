@@ -32,6 +32,7 @@ export {
   type MinimumGroupingCoursesRequirement,
   type MinimumGroupingCreditsRequirement,
   type MinimumTotalCreditsRequirement,
+  type ExternalCourseCompletedRequirement,
   type RequirementExpression,
   type RequirementLeaf,
 } from "./requirements.js";

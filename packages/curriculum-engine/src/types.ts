@@ -1,6 +1,8 @@
 import type {
   Component,
   ComponentId,
+  Course,
+  CourseId,
   Grouping,
   GroupingId,
   PlanVersionId,
@@ -19,12 +21,14 @@ export type CurriculumEvaluationContext = {
   versionCourses: readonly VersionCourse[];
   groupings: readonly Grouping[];
   components: readonly Component[];
+  externalCourses?: readonly Course[];
+  completedExternalCourseIds?: readonly CourseId[];
 };
 
 export type UnresolvedReferenceDiagnostic = {
   code: "UNRESOLVED_REFERENCE";
-  referenceType: "VERSION_COURSE" | "COMPONENT" | "GROUPING";
-  referenceId: VersionCourseId | ComponentId | GroupingId;
+  referenceType: "VERSION_COURSE" | "COMPONENT" | "GROUPING" | "COURSE";
+  referenceId: VersionCourseId | ComponentId | GroupingId | CourseId;
 };
 
 export type PlanProgressResult = {
@@ -134,6 +138,7 @@ export type CompositeRequirementEvaluation = EvaluationNodeBase<
 };
 
 export type RequirementEvaluationNode =
+  | (EvaluationNodeBase<"EXTERNAL_COURSE_COMPLETED"> & { courseId: CourseId })
   | CourseRequirementEvaluation
   | CreditRequirementEvaluation
   | GroupingCoursesRequirementEvaluation

@@ -14,39 +14,36 @@ import {
   type GroupingCreditProgress,
   type StudentTrajectory,
 } from "@sidera/curriculum-engine";
-import { unalCs2024Official } from "@sidera/curriculum-snapshot";
+import { programs, type AcademicProgramData } from "../lib/programs";
 import { useMemo, useState } from "react";
 import {
-  blockingReasons,
   courseStateCounts,
-  coursesById,
-  evaluationContext,
   type CourseStateCounts,
   type PlanProgressProjection,
   planVersionStatus,
   planProgressProjection,
   progressBarPresentation,
   progressStageClass,
-  requirementLines,
   satisfiedProgressBarArguments,
-  unmodeledComponentsNote,
 } from "../lib/curriculum-data";
 import { type Mark, useTrajectory } from "../lib/trajectory";
 import styles from "./curriculum-view.module.css";
 import { useDisplayMode } from "../lib/display-mode";
 
+function createCurriculumView(data: AcademicProgramData) {
+const { snapshot, coursesById, blockingReasons, requirementLines, unmodeledComponentsNote } = data;
 const groupingsByComponentId = new Map(
-  unalCs2024Official.components.map((component) => [
+  snapshot.components.map((component) => [
     component.id,
-    unalCs2024Official.groupings.filter(
+    snapshot.groupings.filter(
       (grouping) => grouping.componentId === component.id,
     ),
   ]),
 );
 const versionCoursesByGroupingId = new Map(
-  unalCs2024Official.groupings.map((grouping) => [
+  snapshot.groupings.map((grouping) => [
     grouping.id,
-    unalCs2024Official.versionCourses.filter(
+    snapshot.versionCourses.filter(
       (versionCourse) => versionCourse.groupingId === grouping.id,
     ),
   ]),
@@ -98,14 +95,21 @@ function ProgressBar({
             : presentation.ariaLabel
         }
       >
-        <span
-          className={styles.progressCompleted}
-          style={{ width: `${presentation.completedRatio * 100}%` }}
-        />
-        <span
-          className={styles.progressInProgress}
-          style={{ width: `${presentation.inProgressRatio * 100}%` }}
-        />
+        {/* Los segmentos solo existen cuando tienen créditos detrás: un tramo
+            de ancho 0 no aporta información y, en el caso de completados,
+            dejaba un resto de resplandor pegado al borde izquierdo. */}
+        {presentation.completedRatio > 0 ? (
+          <span
+            className={styles.progressCompleted}
+            style={{ width: `${presentation.completedRatio * 100}%` }}
+          />
+        ) : null}
+        {presentation.inProgressRatio > 0 ? (
+          <span
+            className={styles.progressInProgress}
+            style={{ width: `${presentation.inProgressRatio * 100}%` }}
+          />
+        ) : null}
         {projection ? (
           <span
             className={styles.progressProjectionMarker}
@@ -133,6 +137,7 @@ function CourseCard({
   trajectory: StudentTrajectory;
   onMark: (mark: Mark) => void;
 }) {
+  const { evaluationContext } = useTrajectory();
   const course = coursesById.get(versionCourse.courseId);
   const requirementText = versionCourse.requirements
     ? requirementLines(versionCourse.requirements)
@@ -150,7 +155,7 @@ function CourseCard({
       : [];
 
   return (
-    <article className={`${styles.courseCard} ${styles[state.toLowerCase()]}`}>
+    <article data-grouping={versionCourse.groupingId} className={`${styles.courseCard} ${styles[state.toLowerCase()]}`}>
       <div className={styles.courseTopline}>
         <span className={styles.code}>{versionCourse.academicCode}</span>
         <span
@@ -244,7 +249,7 @@ function GroupingSection({
   onMark: (versionCourseId: VersionCourseId, mark: Mark) => void;
 }) {
   return (
-    <section className={styles.grouping} aria-labelledby={`grouping-${grouping.id}`}>
+    <section data-grouping={grouping.id} className={styles.grouping} aria-labelledby={`grouping-${grouping.id}`}>
       <div className={styles.groupingHeading}>
         <h3 id={`grouping-${grouping.id}`}>{grouping.name}</h3>
         <span>{grouping.requiredCredits} créditos requeridos</span>
@@ -288,7 +293,7 @@ function ComponentSection({
   const contentId = `component-content-${component.id}`;
 
   return (
-    <section className={styles.component} aria-labelledby={`component-${component.id}`}>
+    <section data-component={component.id} className={styles.component} aria-labelledby={`component-${component.id}`}>
       {/* El encabezado ENTERO es el control: un objetivo amplio y predecible.
           Como es un `<button>` real, el teclado y los lectores de pantalla
           funcionan sin añadir manejadores propios. */}
@@ -361,18 +366,18 @@ function ComponentSection({
   );
 }
 
-export function CurriculumView() {
+function ProgramCurriculumView() {
   const { fullView, planScale } = useDisplayMode();
-  const { trajectory, states, markCourse } = useTrajectory();
+  const { trajectory, states, markCourse, evaluationContext } = useTrajectory();
 
   const progress = useMemo(
     () =>
       calculateSatisfiedPlanProgress(
         evaluationContext,
         trajectory,
-        unalCs2024Official.planVersion.requiredCredits,
+        snapshot.planVersion.requiredCredits,
       ),
-    [trajectory],
+    [trajectory, evaluationContext],
   );
   const unmodeledNote = unmodeledComponentsNote(progress.components);
   const projection = planProgressProjection({
@@ -383,16 +388,16 @@ export function CurriculumView() {
   const counts = courseStateCounts(states);
 
   return (
-    <main className={styles.page} data-full-view={fullView} style={fullView ? { zoom: planScale } : undefined}>
+    <main data-program={data.id} className={styles.page} data-full-view={fullView} style={fullView ? { zoom: planScale } : undefined}>
       <header className={styles.hero}>
         <div>
-          <p className={styles.eyebrow}>{unalCs2024Official.university.name}</p>
-          <h1>{unalCs2024Official.academicProgram.name}</h1>
+          <p className={styles.eyebrow}>{snapshot.university.name}</p>
+          <h1>{snapshot.academicProgram.name}</h1>
           <p className={styles.planName}>
-            {unalCs2024Official.planVersion.name} ·{" "}
+            {snapshot.planVersion.name} ·{" "}
             {planVersionStatus(
-              unalCs2024Official.planVersion.provenance,
-              unalCs2024Official.planVersion.lifecycle,
+              snapshot.planVersion.provenance,
+              snapshot.planVersion.lifecycle,
             )}
           </p>
         </div>
@@ -420,14 +425,14 @@ export function CurriculumView() {
             Visualiza prerrequisitos, correquisitos y rutas entre materias
           </p>
           <p className={styles.introMeta}>
-            {unalCs2024Official.versionCourses.length} materias incluidas en el
+            {snapshot.versionCourses.length} materias incluidas en el
             dataset curado
           </p>
         </div>
       </div>
 
       <div className={styles.curriculumTree}>
-        {unalCs2024Official.components.map((component) => (
+        {snapshot.components.map((component) => (
           <ComponentSection
             key={component.id}
             component={component}
@@ -443,4 +448,14 @@ export function CurriculumView() {
       </div>
     </main>
   );
+}
+
+return ProgramCurriculumView;
+}
+
+const views = new Map(programs.map(program => [program.id, createCurriculumView(program)]));
+export function CurriculumView() {
+  const { program } = useTrajectory();
+  const View = views.get(program.id)!;
+  return <View />;
 }

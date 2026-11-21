@@ -8,7 +8,7 @@ import {
   deriveVersionCourseState,
   type DerivedCourseState,
 } from "@sidera/curriculum-engine";
-import { unalCs2024Official } from "@sidera/curriculum-snapshot";
+import { programs, type AcademicProgramData } from "../lib/programs";
 import {
   type PointerEvent as ReactPointerEvent,
   useCallback,
@@ -19,13 +19,6 @@ import {
   useRef,
   useState,
 } from "react";
-import {
-  blockingReasons,
-  coursesById,
-  evaluationContext,
-  requirementLines,
-  versionCoursesById,
-} from "../lib/curriculum-data";
 import {
   buildCurriculumGraph,
   type CourseEdge,
@@ -42,6 +35,8 @@ import { CourseDetails, GraphViewport, useMobileGraph, type GraphCameraHandle } 
 import { initialMobileDetail, mobileDetailReducer } from "../lib/mobile-detail-state";
 import { ScrollToTop } from "../lib/scroll-to-top";
 
+function createGraphView(data: AcademicProgramData) {
+const { snapshot, coursesById, groupingsById, versionCoursesById, blockingReasons, requirementLines } = data;
 type Point = { x: number; y: number };
 type EdgePosition = CourseEdge & { start: Point; end: Point };
 type DragState = {
@@ -83,7 +78,7 @@ function clampPanelOffset(offset: PanelOffset, base: PanelBase): PanelOffset {
   };
 }
 
-const graph = buildCurriculumGraph(unalCs2024Official.versionCourses);
+const graph = buildCurriculumGraph(snapshot.versionCourses);
 
 const stateLabels: Record<DerivedCourseState, string> = {
   AVAILABLE: "Disponible",
@@ -95,7 +90,7 @@ const stateLabels: Record<DerivedCourseState, string> = {
 function GroupingLegendItems() {
   return (
     <>
-      {unalCs2024Official.groupings.map((grouping) => (
+      {snapshot.groupings.map((grouping) => (
         <span key={grouping.id}>
           <i className={styles.groupingSwatch} data-grouping={grouping.id} />
           {grouping.name}
@@ -153,9 +148,9 @@ function GraphCourseCard({
   );
 }
 
-export function GraphView() {
+function ProgramGraphView() {
   const { fullView } = useDisplayMode();
-  const { trajectory, states, markCourse } = useTrajectory();
+  const { trajectory, states, markCourse, evaluationContext } = useTrajectory();
   const [detailState, dispatchDetail] = useReducer(mobileDetailReducer, initialMobileDetail);
   const selectedId = detailState.selectedId;
   const setSelectedId = useCallback((id: VersionCourseId | null) => dispatchDetail({ type: "select", id }), []);
@@ -279,7 +274,7 @@ export function GraphView() {
 
   const coursesByGraphLevel = useMemo(() => {
     const result = new Map<number, VersionCourse[]>();
-    for (const versionCourse of unalCs2024Official.versionCourses) {
+    for (const versionCourse of snapshot.versionCourses) {
       const level = graph.graphLevels.get(versionCourse.id) ?? 0;
       result.set(level, [...(result.get(level) ?? []), versionCourse]);
     }
@@ -603,6 +598,7 @@ export function GraphView() {
         {selectedVersionCourse && selectedState && (!mobile || detailState.detailOpen) ? (
           <CourseDetails mobile={mobile} onClose={closeDetails}>
           <aside
+            data-grouping={selectedVersionCourse.groupingId}
             ref={detailPanelRef}
             className={`${styles.detailPanel} ${isPanelDragging ? styles.panelDragging : ""}`}
             role="dialog"
@@ -657,6 +653,7 @@ export function GraphView() {
                   </span>
                 </dd>
               </div>
+              {data.id === "mathematics" ? <div><dt>Agrupación</dt><dd>{groupingsById.get(selectedVersionCourse.groupingId)?.name}</dd></div> : null}
             </dl>
 
             <section className={styles.detailSection} data-no-drag>
@@ -723,4 +720,14 @@ export function GraphView() {
       <ScrollToTop />
     </main>
   );
+}
+
+return ProgramGraphView;
+}
+
+const views = new Map(programs.map(program => [program.id, createGraphView(program)]));
+export function GraphView() {
+  const { program } = useTrajectory();
+  const View = views.get(program.id)!;
+  return <View />;
 }

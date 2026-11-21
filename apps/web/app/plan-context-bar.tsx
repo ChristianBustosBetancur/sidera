@@ -1,10 +1,9 @@
 "use client";
 
 import { calculateSatisfiedPlanProgress } from "@sidera/curriculum-engine";
-import { unalCs2024Official } from "@sidera/curriculum-snapshot";
+import { ProgramSelector } from "../lib/program-selector";
 import { useMemo } from "react";
 import {
-  evaluationContext,
   progressBarPresentation,
   satisfiedProgressBarArguments,
 } from "../lib/curriculum-data";
@@ -24,7 +23,8 @@ import styles from "./plan-context-bar.module.css";
    diferencia entre ambos, de modo que lo IN_PROGRESS nunca infla el porcentaje
    principal: se comunica aparte. */
 export function PlanContextBar() {
-  const { trajectory } = useTrajectory();
+  const { trajectory, program, evaluationContext } = useTrajectory();
+  const snapshot = program.snapshot;
 
   /* Mismo cálculo y mismas dependencias que la Vista Plan: se rehace solo
      cuando cambia la trayectoria, no en cada render del shell. */
@@ -32,7 +32,7 @@ export function PlanContextBar() {
     const progress = calculateSatisfiedPlanProgress(
       evaluationContext,
       trajectory,
-      unalCs2024Official.planVersion.requiredCredits,
+      snapshot.planVersion.requiredCredits,
     );
     return {
       ...progressBarPresentation(
@@ -45,25 +45,26 @@ export function PlanContextBar() {
         0,
       ),
     };
-  }, [trajectory]);
+  }, [trajectory, program, evaluationContext]);
 
   return (
     <section className={styles.bar} aria-label="Contexto y progreso del plan" data-sticky-chrome>
+      <ProgramSelector />
       <details className={styles.mobileContext}>
         <summary>
-          <strong>{unalCs2024Official.academicProgram.name}</strong>
+          <strong>{snapshot.academicProgram.name}</strong>
           <span>{`${presentation.completedPercent}%`}</span>
         </summary>
-        <p>{unalCs2024Official.planVersion.name}</p>
+        <p>{snapshot.planVersion.name}</p>
         {presentation.inProgressCredits > 0 ? (
           <p>{presentation.inProgressCredits} créditos en curso</p>
         ) : null}
       </details>
       <p className={styles.context}>
-        <strong>{unalCs2024Official.academicProgram.name}</strong>
+        <strong>{snapshot.academicProgram.name}</strong>
         <span aria-hidden="true"> · </span>
         <span className={styles.planName}>
-          {unalCs2024Official.planVersion.name}
+          {snapshot.planVersion.name}
         </span>
       </p>
 
