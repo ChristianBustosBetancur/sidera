@@ -34,6 +34,14 @@ Conjunto de materias organizadas bajo un criterio común (por ejemplo, área tem
 
 Materia (o condición) que debe cumplirse **antes** de poder cursar otra materia.
 
+## Requisito externo de asignatura
+
+Exige la aprobación de una identidad institucional (`CourseId`) que no forma
+parte del catálogo interno del plan. El estudiante puede registrar su
+cumplimiento por separado; ese hecho no añade créditos ni una materia ficticia
+al plan. En seguimiento conjunto puede reflejar la aprobación del mismo curso
+en otro programa, siempre mediante una correspondencia verificada.
+
 ## Correquisito
 
 Materia que debe cursarse **en simultáneo** (o ya estar aprobada) junto con otra.

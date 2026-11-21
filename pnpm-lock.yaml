@@ -57,6 +57,9 @@ importers:
       '@sidera/curriculum-engine':
         specifier: workspace:*
         version: link:../../packages/curriculum-engine
+      '@sidera/curriculum-schema':
+        specifier: workspace:*
+        version: link:../../packages/curriculum-schema
       '@sidera/curriculum-snapshot':
         specifier: workspace:*
         version: link:../../packages/curriculum-snapshot

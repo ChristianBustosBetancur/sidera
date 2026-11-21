@@ -683,3 +683,20 @@
   }
 
 }
+
+.page[data-program="mathematics"] .planName { color: #eee5e8; }
+.page[data-program="mathematics"] .progressCard { background: #F8F7F5; }
+.page[data-program="mathematics"] .progressTrack {
+  --progress-start: var(--progress-color, var(--brand));
+  --progress-highlight: var(--progress-color, var(--program-secondary));
+  --progress-end: var(--progress-color, var(--brand));
+  --progress-glow: transparent;
+  background: #EAE8E5;
+}
+.component[data-component^="unal-mathematics-"] { --progress-color: var(--component-color); }
+.grouping[data-grouping^="unal-mathematics-"] { --progress-color: var(--group-color); }
+.component[data-component^="unal-mathematics-"] > div > .progressBar .progressTrack { height: .85rem; }
+.grouping[data-grouping^="unal-mathematics-"] .progressTrack { height: .5rem; }
+.component[data-component^="unal-mathematics-"] .componentHeading { border-color: var(--component-color); }
+.grouping[data-grouping^="unal-mathematics-"] > .groupingHeading { border-inline-start: .25rem solid var(--group-color); padding-inline-start: .6rem; }
+.courseCard[data-grouping^="unal-mathematics-"] { border-top: 4px solid var(--group-color); }

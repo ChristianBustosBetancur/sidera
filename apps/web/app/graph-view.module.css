@@ -927,3 +927,8 @@
     transition: none;
   }
 }
+
+.detailPanel[data-grouping^="unal-mathematics-"] { border-inline-start: 4px solid var(--group-color); }
+
+.groupingSwatch[data-grouping^="unal-mathematics-"] { background: var(--group-color); }
+.courseCard[data-grouping^="unal-mathematics-"] { border-top: 4px solid var(--group-color); }

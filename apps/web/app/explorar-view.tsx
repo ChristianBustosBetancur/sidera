@@ -5,7 +5,7 @@ import {
   deriveVersionCourseState,
   type DerivedCourseState,
 } from "@sidera/curriculum-engine";
-import { unalCs2024Official } from "@sidera/curriculum-snapshot";
+import { programs, type AcademicProgramData } from "../lib/programs";
 import {
   type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
@@ -18,14 +18,6 @@ import {
   useRef,
   useState,
 } from "react";
-import {
-  blockingReasons,
-  coursesById,
-  evaluationContext,
-  groupingsById,
-  requirementLines,
-  versionCoursesById,
-} from "../lib/curriculum-data";
 import { buildCurriculumGraph, type CourseEdge } from "../lib/curriculum-graph";
 import {
   hasExceededDragThreshold,
@@ -55,6 +47,8 @@ import { CourseDetails, GraphViewport, useMobileGraph, type GraphCameraHandle } 
 import { initialMobileDetail, mobileDetailReducer } from "../lib/mobile-detail-state";
 import { ScrollToTop } from "../lib/scroll-to-top";
 
+function createExplorerView(data: AcademicProgramData) {
+const { snapshot, coursesById, versionCoursesById, groupingsById, blockingReasons, requirementLines } = data;
 /* Cuántas sugerencias se ofrecen bajo el buscador. Suficientes para elegir sin
    convertir el desplegable en una segunda lista del plan. */
 const MAX_SUGGESTIONS = 8;
@@ -83,20 +77,20 @@ function toggleInSet<T>(source: ReadonlySet<T>, value: T): Set<T> {
   return next;
 }
 
-const graph = buildCurriculumGraph(unalCs2024Official.versionCourses);
+const graph = buildCurriculumGraph(snapshot.versionCourses);
 const layouts = {
   desktop: buildExplorerLayout(
-    unalCs2024Official.versionCourses,
+    snapshot.versionCourses,
     graph,
     EXPLORER_LAYOUT_CONFIGS.desktop,
   ),
   tablet: buildExplorerLayout(
-    unalCs2024Official.versionCourses,
+    snapshot.versionCourses,
     graph,
     EXPLORER_LAYOUT_CONFIGS.tablet,
   ),
   mobile: buildExplorerLayout(
-    unalCs2024Official.versionCourses,
+    snapshot.versionCourses,
     graph,
     EXPLORER_LAYOUT_CONFIGS.mobile,
   ),
@@ -432,8 +426,8 @@ function useResponsiveVariant(): Variant {
   return variant;
 }
 
-export function ExplorerView() {
-  const { trajectory, states, markCourse } = useTrajectory();
+function ProgramExplorerView() {
+  const { trajectory, states, markCourse, evaluationContext } = useTrajectory();
   const { fullView } = useDisplayMode();
   const screenVariant = useResponsiveVariant();
   const variant = fullView ? "desktop" : screenVariant;
@@ -480,7 +474,7 @@ export function ExplorerView() {
      que la entrada se recalcula con él. */
   const filterEntriesSource: readonly ExplorerFilterEntry[] = useMemo(
     () =>
-      unalCs2024Official.versionCourses.map((versionCourse) => ({
+      snapshot.versionCourses.map((versionCourse) => ({
         id: versionCourse.id,
         name: coursesById.get(versionCourse.courseId)?.name ?? "",
         academicCode: versionCourse.academicCode,
@@ -920,7 +914,7 @@ export function ExplorerView() {
   );
 
   return (
-    <main className={styles.page} onKeyDown={(event) => {
+    <main data-program={data.id} className={styles.page} onKeyDown={(event) => {
       if (event.key === "Escape") setSelectedId(null);
     }}>
       <header className={styles.header}>
@@ -1110,8 +1104,8 @@ export function ExplorerView() {
               role="group"
               aria-label="Filtrar por agrupación curricular"
             >
-              {unalCs2024Official.groupings.map((grouping) => (
-                <label key={grouping.id}>
+              {snapshot.groupings.map((grouping) => (
+                <label key={grouping.id} data-grouping={grouping.id}>
                   <input
                     type="checkbox"
                     checked={groupingFilter.has(grouping.id)}
@@ -1180,7 +1174,7 @@ export function ExplorerView() {
                   filterVisualMode={filterVisualMode}
                 />
               <div className={styles.nodes}>
-                {unalCs2024Official.versionCourses.map((versionCourse) => {
+                {snapshot.versionCourses.map((versionCourse) => {
                   const course = coursesById.get(versionCourse.courseId);
                   const state = states.get(versionCourse.id) ?? "BLOCKED";
                   const relevance = nodeRelevance(versionCourse.id, focus);
@@ -1244,6 +1238,7 @@ export function ExplorerView() {
           {selectedVersionCourse && selectedCourse && selectedState && (!mobileCamera || detailState.detailOpen) ? (
             <CourseDetails mobile={mobileCamera} onClose={closeDetails}>
             <aside
+              data-grouping={selectedVersionCourse.groupingId}
               ref={panelRef}
               className={`${styles.detail} ${isPanelDragging ? styles.panelDragging : ""}`}
               role="dialog"
@@ -1331,4 +1326,14 @@ export function ExplorerView() {
       <ScrollToTop />
     </main>
   );
+}
+
+return ProgramExplorerView;
+}
+
+const views = new Map(programs.map(program => [program.id, createExplorerView(program)]));
+export function ExplorerView() {
+  const { program } = useTrajectory();
+  const View = views.get(program.id)!;
+  return <View />;
 }

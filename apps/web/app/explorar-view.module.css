@@ -1203,3 +1203,11 @@
     transition: none;
   }
 }
+
+.page[data-program="mathematics"] { background: var(--paper); }
+.page[data-program="mathematics"] .header { background: var(--brand); }
+.detail[data-grouping^="unal-mathematics-"] { border-inline-start: 4px solid var(--group-color); }
+.page[data-program="mathematics"] label[data-grouping] { border-inline-start: 3px solid var(--group-color); }
+
+.groupingSwatch[data-grouping^="unal-mathematics-"] { --swatch: var(--group-color); }
+.node[data-grouping^="unal-mathematics-"] { --ring: var(--group-color); }

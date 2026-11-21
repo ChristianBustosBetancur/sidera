@@ -1,5 +1,6 @@
 "use client";
 
+import { useTrajectory } from "../lib/trajectory";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
@@ -63,6 +64,7 @@ function isActiveRoute(pathname: string, href: string): boolean {
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
+  const { program } = useTrajectory();
   const { fullView, toggle } = useDisplayMode();
   const pathname = usePathname() ?? "/";
   const [collapsed, setCollapsed] = useState(false);
@@ -150,7 +152,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     });
 
   return (
-    <div className={styles.shell} data-collapsed={collapsed ? "true" : undefined}>
+    <div data-program={program.id} className={styles.shell} data-collapsed={collapsed ? "true" : undefined}>
       <a className={styles.skipLink} href="#contenido-principal">
         Saltar al contenido
       </a>
