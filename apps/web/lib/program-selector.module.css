@@ -1,6 +1,20 @@
 .controls { display: flex; flex-wrap: wrap; align-items: end; gap: .5rem 1rem; width: 100%; min-width: 0; }
 .selector { display: grid; gap: .15rem; color: var(--muted); font-size: .75rem; max-width: 100%; }
 .selector select { min-height: 2.75rem; max-width: 100%; width: 19rem; border: 1px solid var(--line); border-radius: .45rem; padding: .35rem .5rem; background: var(--surface); color: var(--brand); font: inherit; font-size: .88rem; font-weight: 700; }
+/* Interruptor de Doble Titulación: siempre visible junto al selector, sin
+   desplegable intermedio. Apagado es neutro y encendido toma la marca del
+   programa activo, de modo que el estado se lee de un vistazo. */
+.dualSwitch { display: inline-flex; align-items: center; gap: .4rem; min-height: 2.75rem; max-width: 100%; padding: .35rem .75rem; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: .45rem; font: inherit; font-size: .88rem; font-weight: 700; cursor: pointer; transition: background-color 140ms ease, color 140ms ease, border-color 140ms ease; }
+.dualSwitch:hover:not(:disabled) { border-color: var(--brand); }
+.dualSwitch[aria-checked="true"] { color: #fff; background: var(--brand); border-color: var(--brand); }
+.dualSwitch:disabled { opacity: .55; cursor: not-allowed; }
+.dualSwitch:focus-visible { outline: 3px solid #2266aa; outline-offset: 2px; }
+.dualMark:empty { display: none; }
+
+/* Descrita para lectores de pantalla vía aria-describedby, y como tooltip en
+   el propio botón: la barra de contexto no tiene sitio para un párrafo. */
+.dualDescription { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
 .settings { position: relative; font-size: .8rem; }
 .settings summary { min-height: 2.75rem; padding-block: .65rem; color: var(--brand); cursor: pointer; }
 .panel { position: absolute; z-index: 31; right: 0; top: 100%; width: min(24rem, calc(100vw - 2rem)); max-height: 65dvh; overflow-y: auto; padding: 1rem; background: var(--surface); border: 1px solid var(--line); border-radius: .6rem; box-shadow: 0 .5rem 1.5rem #17211b22; }
@@ -12,3 +26,7 @@
 @media (max-width: 42rem) { .panel { position: static; width: 100%; max-height: 50dvh; } .settings { width: 100%; } .selector { width: 100%; } .selector select { width: 100%; } }
 
 .selector select:focus-visible, .external input:focus-visible { outline: 3px solid #2266aa; outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .dualSwitch { transition: none; }
+}

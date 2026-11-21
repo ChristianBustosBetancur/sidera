@@ -51,16 +51,32 @@ describe("pure multi-program coordination", () => {
     expect(preview.next.sharedFacts[shared]).toBe("COMPLETED");
     expect(records.dual).toBe(false);
   });
-  it.each(["IN_PROGRESS", "UNMARKED"] as const)("requires resolving completed versus explicit %s", mark => {
+  it("requires resolving completed versus in progress, and applying one state to all clears it", () => {
     let records = edit(initial(), "a", shared, "COMPLETED").next;
     records = edit(records, "b", exclusive, "COMPLETED").next;
-    records = edit(records, "b", shared, mark).next;
+    records = edit(records, "b", shared, "IN_PROGRESS").next;
     const before = structuredClone(records);
     const conflict = previewDualActivation(records, models, [shared]);
-    expect(conflict.conflicts[0]!.states).toEqual([{ programId: "a", mark: "COMPLETED" }, { programId: "b", mark }]);
+    expect(conflict.conflicts[0]!.states).toEqual([{ programId: "a", mark: "COMPLETED" }, { programId: "b", mark: "IN_PROGRESS" }]);
+    expect(conflict.shared).toEqual([]);
     const resolved = previewDualActivation(records, models, [shared], { [shared]: "COMPLETED" });
     expect(resolved.conflicts).toEqual([]);
     expect(resolved.next.plans.b!.marks["b:shared"]).toBe("COMPLETED");
+    expect(records).toEqual(before);
+  });
+  it.each(["no record at all", "an explicit unmarked"])("shares a marked course over %s without asking", situation => {
+    let records = edit(initial(), "a", shared, "COMPLETED").next;
+    if (situation !== "no record at all") {
+      records = edit(records, "b", exclusive, "COMPLETED").next;
+      records = edit(records, "b", shared, "UNMARKED").next;
+      expect(records.plans.b!.marks["b:shared"]).toBe("UNMARKED");
+    }
+    const before = structuredClone(records);
+    const preview = previewDualActivation(records, models, [shared]);
+    expect(preview.conflicts).toEqual([]);
+    expect(preview.shared).toEqual([{ courseId: shared, mark: "COMPLETED" }]);
+    expect(preview.next.plans.b!.marks["b:shared"]).toBe("COMPLETED");
+    // Previsualizar nunca escribe: cancelar deja los registros intactos.
     expect(records).toEqual(before);
   });
   it("shares facts while reconciling requirements separately without erasing the fact", () => {

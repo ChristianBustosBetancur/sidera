@@ -12,9 +12,13 @@ export type AcademicRecords = {
 };
 export type ProgramModel = { id: string; context: CurriculumEvaluationContext };
 export type SharedConflict = { courseId: CourseId; states: { programId: string; mark: TrajectoryMark }[] };
+export type SharedAdoption = { courseId: CourseId; mark: TrajectoryMark };
 export type AcademicPreview = {
   next: AcademicRecords;
   conflicts: SharedConflict[];
+  // Cursos cuyo estado se propaga al otro plan sin necesidad de elegir: hay un
+  // único estado explícito y el otro programa no lo contradice.
+  shared: SharedAdoption[];
   reconciliations: { programId: string; result: TrajectoryReconciliation }[];
   changes: { programId: string; courseId: CourseId; before?: TrajectoryMark; after: TrajectoryMark }[];
   requiresConfirmation: boolean;
@@ -73,7 +77,7 @@ function write(preview: AcademicPreview, model: ProgramModel, courseId: CourseId
   preview.changes.push({ programId: model.id, courseId, before, after: mark });
 }
 function start(records: AcademicRecords): AcademicPreview {
-  return { next: clone(records), conflicts: [], reconciliations: [], changes: [], requiresConfirmation: false };
+  return { next: clone(records), conflicts: [], shared: [], reconciliations: [], changes: [], requiresConfirmation: false };
 }
 function reconcile(preview: AcademicPreview, models: readonly ProgramModel[]) {
   for (const model of models) {
@@ -114,13 +118,20 @@ export function previewDualActivation(records: AcademicRecords, models: readonly
       const mark = currentMark(records, model, courseId);
       return mark === undefined ? [] : [{ programId: model.id, mark }];
     });
-    const marks = new Set(states.map(state => state.mark));
+    // «Sin marcar» no es una postura académica que debatir: es la ausencia de
+    // registro. Solo los estados explícitos entran en la clasificación, así
+    // que un plan marcado frente a otro sin marcar se comparte directamente y
+    // únicamente Completada frente a En curso exige elegir.
+    const explicit = states.filter(state => state.mark !== "UNMARKED");
+    const marks = new Set(explicit.map(state => state.mark));
     const resolution = resolutions[courseId];
-    if (marks.size > 1 && resolution === undefined) { preview.conflicts.push({ courseId, states }); continue; }
-    const mark = resolution ?? states[0]?.mark;
+    if (marks.size > 1 && resolution === undefined) { preview.conflicts.push({ courseId, states: explicit }); continue; }
+    const mark = resolution ?? explicit[0]?.mark;
     if (!mark) continue;
     preview.next.sharedFacts[courseId] = mark;
+    const applied = preview.changes.length;
     for (const { model } of targets) write(preview, model, courseId, mark);
+    if (preview.changes.length > applied) preview.shared.push({ courseId, mark });
   }
   reconcile(preview, models);
   return preview;
