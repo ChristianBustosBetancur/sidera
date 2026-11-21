@@ -1,85 +1,109 @@
 import { describe, expect, it } from "vitest";
 import type { VersionCourseId } from "@sidera/curriculum-domain";
-import { calculateSatisfiedPlanProgress, previewAcademicMark, recordContext, recordTrajectory, programRecord } from "@sidera/curriculum-engine";
-import { emptyAcademicRecords } from "./academic-storage";
-import { programs, programModels, verifiedShared } from "./programs";
-import { electiveSurplus, electivesFullNote, surplusNote } from "./elective-surplus";
+import { programs } from "./programs";
+import { electivesFullNote, freeChoiceOrigins, groupingElectiveStates, originNote, surplusNote } from "./elective-surplus";
 
+const computing = programs[0]!;
 const mathematics = programs[1]!;
+const idOf = (program: typeof computing, code: string) =>
+  program.snapshot.versionCourses.find(course => course.academicCode === code)!.id;
+const trajectory = (program: typeof computing, completed: readonly string[], inProgress: readonly string[] = []) => ({
+  completedVersionCourseIds: completed.map(code => idOf(program, code)),
+  inProgressVersionCourseIds: inProgress.map(code => idOf(program, code)),
+});
 const applied = mathematics.snapshot.groupings.find(grouping => grouping.id.endsWith("-applied"))!;
-const appliedCourses = mathematics.snapshot.versionCourses.filter(course => course.groupingId === applied.id);
-const byCode = (code: string) => appliedCourses.find(course => course.academicCode === code)!;
-const ids = (codes: readonly string[]) => new Set<VersionCourseId>(codes.map(code => byCode(code).id));
-const surplusOf = (completed: readonly string[], inProgress: readonly string[] = []) =>
-  electiveSurplus({ courses: appliedCourses, requiredCredits: applied.requiredCredits, completed: ids(completed), inProgress: ids(inProgress) });
+const csMathematics = computing.snapshot.groupings.find(grouping => grouping.id.endsWith("-mathematics"))!;
+const stateFor = (program: typeof computing, groupingId: string, completed: readonly string[], inProgress: readonly string[] = []) =>
+  groupingElectiveStates(program.evaluationContext, trajectory(program, completed, inProgress)).get(groupingId as never)!;
 
-/* Matemática Aplicada: 8 requeridos, una obligatoria de 4 (3006886 Análisis
-   numérico) y optativas de 4, de modo que el cupo optativo es de 4 créditos. */
-describe("excedente de optativas", () => {
-  it("deriva el cupo de los requeridos menos las obligatorias", () => {
-    expect(surplusOf([]).capacity).toBe(4);
-    expect(surplusOf([]).electivesFull).toBe(false);
-    expect(surplusOf([]).surplusCredits).toBe(0);
+/* Matemática Aplicada: 8 requeridos, una obligatoria de 4, cupo optativo 4. */
+describe("excedente agregado por agrupación", () => {
+  it("no hay excedente mientras quede cupo", () => {
+    const state = stateFor(mathematics, applied.id, ["3006909"]);
+    expect(state).toMatchObject({ capacity: 4, approvedSurplus: 0, inProgressSurplus: 0, electivesFull: true });
+    expect(surplusNote(state)).toBeUndefined();
   });
 
-  it("una sola optativa llena el cupo y no sobra nada", () => {
-    const result = surplusOf(["3006909"]);
-    expect(result.surplus).toEqual([]);
-    expect(result.surplusCredits).toBe(0);
-    expect(result.electivesFull).toBe(true);
+  it("cuenta los créditos que sobran, sin señalar asignatura", () => {
+    const state = stateFor(mathematics, applied.id, ["3006909", "3006884"]);
+    expect(state.approvedSurplus).toBe(4);
+    expect(state.approvedElectives).toBe(2);
+    expect(surplusNote(state)).toBe("+4 créditos excedentes");
+    // El estado no expone ninguna lista de «perdedoras».
+    expect(Object.keys(state)).not.toContain("surplus");
   });
 
-  it("la segunda optativa queda como excedente, por código y no por orden de marca", () => {
-    const result = surplusOf(["3006909", "3006884"]);
-    // 3006884 va antes que 3006909 por código: la que sobra es la segunda.
-    expect(result.surplus).toEqual([byCode("3006909").id]);
-    expect(result.surplusCredits).toBe(4);
-    // El mismo conjunto marcado al revés produce exactamente el mismo resultado.
-    expect(surplusOf(["3006884", "3006909"]).surplus).toEqual(result.surplus);
+  it("distingue el excedente aprobado del que está en curso", () => {
+    const state = stateFor(mathematics, applied.id, ["3006884"], ["3008082"]);
+    expect(state).toMatchObject({ approvedSurplus: 0, inProgressSurplus: 4, inProgressElectives: 1 });
+    expect(surplusNote(state)).toBe("+4 créditos excedentes en curso");
+    const ambos = stateFor(mathematics, applied.id, ["3006909", "3006884"], ["3008082"]);
+    expect(surplusNote(ambos)).toBe("+4 créditos excedentes · +4 créditos excedentes en curso");
   });
 
-  it("las Completadas consumen el cupo antes que las En curso", () => {
-    const result = surplusOf(["3006884"], ["3008082"]);
-    expect(result.surplus).toEqual([byCode("3008082").id]);
-    expect(result.surplusCredits).toBe(4);
-  });
-
-  it("coincide con el excedente que calcula el motor", () => {
-    let records = emptyAcademicRecords();
-    for (const code of ["3006909", "3006884"]) {
-      records = previewAcademicMark(records, programModels, verifiedShared, "mathematics", byCode(code).courseId, "COMPLETED").next;
-    }
-    const record = programRecord(records, programModels[1]!);
-    const progress = calculateSatisfiedPlanProgress(
-      recordContext(record, mathematics.evaluationContext),
-      recordTrajectory(record, mathematics.evaluationContext),
-      mathematics.snapshot.planVersion.requiredCredits,
-    );
-    const group = progress.components.flatMap(component => component.groupings).find(entry => entry.groupingId === applied.id)!;
-    expect(group.excessCredits).toBe(surplusOf(["3006909", "3006884"]).surplusCredits);
-    expect(group.satisfiedCredits).toBe(4);
-  });
-
-  it("nombra la obligatoria que falta cuando el cupo ya está lleno", () => {
-    const result = surplusOf(["3006909", "3006884"]);
-    expect(result.missingMandatory).toEqual([byCode("3006886").id]);
-    expect(electivesFullNote(result, mathematics.courseReference))
+  it("nombra la obligatoria que falta cuando el cupo está lleno", () => {
+    const state = stateFor(mathematics, applied.id, ["3006909", "3006884"]);
+    expect(electivesFullNote(state, mathematics.courseReference))
       .toBe("Optativas completas · falta 3006886 Análisis numérico");
-    expect(surplusNote(result)).toBe("+4 créditos excedentes");
+    expect(electivesFullNote(stateFor(mathematics, applied.id, []), mathematics.courseReference)).toBeUndefined();
   });
 
-  it("calla cuando el cupo no está lleno o la obligatoria ya está aprobada", () => {
-    expect(electivesFullNote(surplusOf(["3006909"]), mathematics.courseReference))
-      .toBe("Optativas completas · falta 3006886 Análisis numérico");
-    expect(electivesFullNote(surplusOf([]), mathematics.courseReference)).toBeUndefined();
-    expect(electivesFullNote(surplusOf(["3006909", "3006886"]), mathematics.courseReference)).toBeUndefined();
-    expect(surplusNote(surplusOf([]))).toBeUndefined();
+  /* Regresión del caso reportado: en Computación la agrupación Matemáticas
+     tiene cupo optativo 4 y seis optativas de 4 créditos, así que solo una
+     cabe. Completar una segunda no debe reetiquetar a la primera. */
+  describe("Matemáticas Especiales y Teoría de Grafos", () => {
+    const base = ["3010334", "3010390"];
+
+    it("una sola optativa aprobada no genera excedente", () => {
+      const state = stateFor(computing, csMathematics.id, [...base, "3006905"]);
+      expect(state).toMatchObject({ capacity: 4, approvedSurplus: 0, approvedElectives: 1 });
+    });
+
+    it("al aprobar la segunda, el excedente son créditos y ninguna materia cambia de etiqueta", () => {
+      const state = stateFor(computing, csMathematics.id, [...base, "3006905", "3006900"]);
+      expect(state).toMatchObject({ approvedSurplus: 4, approvedElectives: 2 });
+      expect(surplusNote(state)).toBe("+4 créditos excedentes");
+      // Da igual en qué orden aparezcan: el resultado es el mismo conjunto.
+      expect(stateFor(computing, csMathematics.id, [...base, "3006900", "3006905"])).toEqual(state);
+    });
+
+    it("el desglose de Libre Elección nombra la agrupación, no la asignatura", () => {
+      const origins = freeChoiceOrigins(computing.evaluationContext, trajectory(computing, [...base, "3006905", "3006900"]));
+      expect(origins).toHaveLength(1);
+      expect(origins[0]!.groupingId).toBe(csMathematics.id);
+      expect(originNote(origins[0]!)).toBe("4 créditos excedentes de 2 optativas aprobadas");
+      expect(origins[0]!.approvedElectives).toBe(2);
+      // Ninguna propiedad del desglose identifica una materia concreta.
+      expect(JSON.stringify(origins)).not.toContain("3006905");
+      expect(JSON.stringify(origins)).not.toContain("3006900");
+    });
+
+    it("al desmarcar la segunda vuelve a no haber excedente", () => {
+      const state = stateFor(computing, csMathematics.id, [...base, "3006905"]);
+      expect(state.approvedSurplus).toBe(0);
+      expect(freeChoiceOrigins(computing.evaluationContext, trajectory(computing, [...base, "3006905"]))).toEqual([]);
+    });
   });
 
-  it("no inventa excedente en una agrupación sin optativas", () => {
-    const degree = mathematics.snapshot.groupings.find(grouping => grouping.id.endsWith("-degree"))!;
-    const courses = mathematics.snapshot.versionCourses.filter(course => course.groupingId === degree.id);
-    const result = electiveSurplus({ courses, requiredCredits: degree.requiredCredits, completed: new Set(), inProgress: new Set() });
-    expect(result).toMatchObject({ capacity: 0, surplus: [], surplusCredits: 0, electivesFull: false });
+  it("con créditos fraccionados habla de créditos, no de materias trasladadas", () => {
+    /* Algoritmos y Computación: 19 requeridos, 12 obligatorios, cupo 7. Dos
+       optativas de 4 dejan 1 crédito de excedente, no una asignatura entera. */
+    const algorithms = computing.snapshot.groupings.find(grouping => grouping.id.endsWith("-algorithms-computing"))!;
+    const electives = computing.snapshot.versionCourses
+      .filter(course => course.groupingId === algorithms.id && !course.mandatory && course.credits === 4)
+      .slice(0, 2);
+    expect(electives).toHaveLength(2);
+    const states = groupingElectiveStates(computing.evaluationContext, {
+      completedVersionCourseIds: electives.map(course => course.id as VersionCourseId),
+      inProgressVersionCourseIds: [],
+    });
+    const state = states.get(algorithms.id)!;
+    expect(state.capacity).toBe(7);
+    expect(state.approvedSurplus).toBe(1);
+    expect(surplusNote(state)).toBe("+1 crédito excedente");
+    expect(originNote(freeChoiceOrigins(computing.evaluationContext, {
+      completedVersionCourseIds: electives.map(course => course.id as VersionCourseId),
+      inProgressVersionCourseIds: [],
+    })[0]!)).toBe("1 crédito excedente de 2 optativas aprobadas");
   });
 });
