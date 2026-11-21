@@ -40,6 +40,7 @@ import { useDisplayMode } from "../lib/display-mode";
 import { canvasPoint } from "../lib/display-geometry";
 import { CourseDetails, GraphViewport, useMobileGraph, type GraphCameraHandle } from "../lib/graph-viewport";
 import { initialMobileDetail, mobileDetailReducer } from "../lib/mobile-detail-state";
+import { ScrollToTop } from "../lib/scroll-to-top";
 
 type Point = { x: number; y: number };
 type EdgePosition = CourseEdge & { start: Point; end: Point };
@@ -719,6 +720,7 @@ export function GraphView() {
           </CourseDetails>
         ) : null}
       </div>
+      <ScrollToTop />
     </main>
   );
 }
