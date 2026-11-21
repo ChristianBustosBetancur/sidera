@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { unalCs2024Official, unalMathematics2020 } from "@sidera/curriculum-snapshot";
-import { previewAcademicMark, previewDualActivation } from "@sidera/curriculum-engine";
+import { deactivateDual, previewAcademicMark, previewDualActivation, type AcademicRecords } from "@sidera/curriculum-engine";
 import { emptyAcademicRecords } from "./academic-storage";
 import { programs, programModels, verifiedShared } from "./programs";
 import { buildCurriculumGraph } from "./curriculum-graph";
@@ -33,5 +33,70 @@ describe("program registry and visual metadata", () => {
     expect(preview.next.plans[unalMathematics2020.planVersion.id]!.externalCompleted[id]).toBeUndefined();
     expect(preview.next.sharedFacts[id]).toBe("IN_PROGRESS");
     expect(records.plans[unalMathematics2020.planVersion.id]!.externalCompleted[id]).toBe(true);
+  });
+});
+
+/* Clasificación de la activación sobre los catálogos reales. «Sin marcar» es
+   ausencia de registro, no una postura que debatir: solo dos estados
+   explícitos distintos obligan a elegir. */
+describe("dual degree activation over the real catalogs", () => {
+  const mark = (records: AcademicRecords, programId: string, courseId: string, state: "COMPLETED" | "IN_PROGRESS") =>
+    previewAcademicMark(records, programModels, verifiedShared, programId, courseId as typeof verifiedShared[number], state).next;
+  // Sin requisitos en ninguno de los dos planes: así la reconciliación no
+  // retira la marca que el caso de prueba acaba de establecer.
+  const unconstrained = verifiedShared.filter(id => programModels.every(model => {
+    const course = model.context.versionCourses.find(course => course.courseId === id);
+    return course !== undefined && course.requirements === undefined;
+  }));
+  const calculus = programs[0]!.snapshot.versionCourses.find(course => course.academicCode === "1000004-M")!.courseId;
+
+  it("shares a marked course over a plan with no record, without asking", () => {
+    const records = mark(emptyAcademicRecords(), "computing", calculus, "COMPLETED");
+    const before = structuredClone(records);
+    const preview = previewDualActivation(records, programModels, verifiedShared);
+    expect(preview.conflicts).toEqual([]);
+    expect(preview.shared).toContainEqual({ courseId: calculus, mark: "COMPLETED" });
+    expect(preview.next.plans[unalMathematics2020.planVersion.id]!.marks[
+      programs[1]!.snapshot.versionCourses.find(course => course.courseId === calculus)!.id
+    ]).toBe("COMPLETED");
+    // Cancelar es no confirmar: previsualizar nunca toca los registros.
+    expect(records).toEqual(before);
+  });
+
+  it("asks only when both programs hold different explicit states", () => {
+    let records = mark(emptyAcademicRecords(), "computing", calculus, "COMPLETED");
+    records = mark(records, "mathematics", calculus, "IN_PROGRESS");
+    const preview = previewDualActivation(records, programModels, verifiedShared);
+    expect(preview.conflicts.map(conflict => conflict.courseId)).toEqual([calculus]);
+    expect(preview.conflicts[0]!.states).toEqual([
+      { programId: "computing", mark: "COMPLETED" },
+      { programId: "mathematics", mark: "IN_PROGRESS" },
+    ]);
+    expect(preview.shared.some(adoption => adoption.courseId === calculus)).toBe(false);
+  });
+
+  it("clears every conflict when one state is applied to all of them", () => {
+    const [first, second] = unconstrained;
+    expect(second).toBeDefined();
+    let records = emptyAcademicRecords();
+    for (const courseId of [first!, second!]) {
+      records = mark(records, "computing", courseId, "COMPLETED");
+      records = mark(records, "mathematics", courseId, "IN_PROGRESS");
+    }
+    const detected = previewDualActivation(records, programModels, verifiedShared);
+    expect(detected.conflicts).toHaveLength(2);
+    // «Aplicar a todas» es exactamente esto: un mismo estado para cada conflicto.
+    const applied = Object.fromEntries(detected.conflicts.map(conflict => [conflict.courseId, "COMPLETED" as const]));
+    const resolved = previewDualActivation(records, programModels, verifiedShared, applied);
+    expect(resolved.conflicts).toEqual([]);
+    for (const courseId of [first!, second!]) expect(resolved.next.sharedFacts[courseId]).toBe("COMPLETED");
+  });
+
+  it("keeps both trajectories when the link is switched off", () => {
+    const linked = previewDualActivation(mark(emptyAcademicRecords(), "computing", calculus, "COMPLETED"), programModels, verifiedShared).next;
+    const unlinked = deactivateDual(linked);
+    expect(unlinked.dual).toBe(false);
+    expect(unlinked.plans).toEqual(linked.plans);
+    expect(unlinked.sharedFacts).toEqual(linked.sharedFacts);
   });
 });
